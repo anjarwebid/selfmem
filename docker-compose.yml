@@ -1,0 +1,11 @@
+services:
+  llm-memory:
+    build: .
+    container_name: llm-memory
+    restart: unless-stopped
+    ports:
+      - "8818:8818"
+    volumes:
+      - ./data:/data
+    environment:
+      - LLM_MEMORY_DATA=/data
