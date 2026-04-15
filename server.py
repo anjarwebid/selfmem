@@ -361,12 +361,20 @@ async def ui_dashboard(request: Request):
 
 
 @app.get("/ui/memories", response_class=HTMLResponse)
-async def ui_memories(request: Request):
+async def ui_memories(
+    request: Request,
+    filter_category: str = Query(""),
+    filter_tag: str = Query(""),
+):
     ctx = await _base_context(request, "memories")
     db_user = _resolve_user(ctx["current_user"])
     ctx["categories"] = await db.get_categories(db_user)
-    ctx["total"] = await db.count_memories(db_user)
-    memories = await db.list_memories(db_user, limit=PAGE_SIZE)
+    ctx["filter_category"] = filter_category
+    ctx["filter_tag"] = filter_tag
+
+    tags_filter = [filter_tag] if filter_tag else None
+    ctx["total"] = await db.count_memories(db_user, filter_category)
+    memories = await db.list_memories(db_user, category=filter_category, tags=tags_filter, limit=PAGE_SIZE)
     total_pages = max(1, math.ceil(ctx["total"] / PAGE_SIZE))
     ctx["memories"] = memories
     ctx["page"] = 1
