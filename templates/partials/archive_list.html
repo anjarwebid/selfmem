@@ -1,0 +1,12 @@
+<div id="archive-list" class="space-y-3">
+    {% if memories %}
+    {% for mem in memories %}
+    {% include "partials/archive_row.html" %}
+    {% endfor %}
+    {% else %}
+    <div class="text-center py-12 text-gray-500">
+        <p class="text-lg">Archive is empty</p>
+        <p class="text-sm mt-1">Deleted memories will appear here</p>
+    </div>
+    {% endif %}
+</div>

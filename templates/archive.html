@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Archive - SelfMem{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <h2 class="text-2xl font-bold">Archive</h2>
+    <p class="text-sm text-gray-500 mt-1">Soft-deleted memories for <span class="text-gray-300">{{ current_user }}</span></p>
+</div>
+
+<div id="archive-list">
+    {% include "partials/archive_list.html" %}
+</div>
+{% endblock %}

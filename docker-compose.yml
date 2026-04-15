@@ -1,11 +1,32 @@
 services:
-  llm-memory:
+  db:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: selfmem
+      POSTGRES_USER: selfmem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U selfmem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  selfmem:
     build: .
-    container_name: llm-memory
+    container_name: selfmem
     restart: unless-stopped
     ports:
       - "8818:8818"
-    volumes:
-      - ./data:/data
     environment:
-      - LLM_MEMORY_DATA=/data
+      - DATABASE_URL=postgresql://selfmem:${POSTGRES_PASSWORD:-changeme}@db:5432/selfmem
+      - SELFMEM_API_KEYS=${SELFMEM_API_KEYS}
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

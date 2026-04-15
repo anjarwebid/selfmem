@@ -1,0 +1,16 @@
+<div id="memory-list" class="space-y-3">
+    {% if memories %}
+    {% for mem in memories %}
+    {% include "partials/memory_row.html" %}
+    {% endfor %}
+
+    {% if total_pages is defined and total_pages > 1 %}
+    {% include "partials/pagination.html" %}
+    {% endif %}
+    {% else %}
+    <div class="text-center py-12 text-gray-500">
+        <p class="text-lg">No memories found</p>
+        <p class="text-sm mt-1">Try a different search or add a new memory</p>
+    </div>
+    {% endif %}
+</div>

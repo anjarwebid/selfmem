@@ -1,0 +1,17 @@
+<div class="flex items-center justify-between mt-4 pt-4 border-t border-dark-600">
+    <span class="text-sm text-gray-500">Page {{ page }} of {{ total_pages }}</span>
+    <div class="flex gap-2">
+        {% if page > 1 %}
+        <button hx-get="/ui/partials/memories?page={{ page - 1 }}"
+                hx-target="#memory-list"
+                hx-include="#filter-form, #search-input, #category-select"
+                class="px-3 py-1.5 text-sm bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors">Prev</button>
+        {% endif %}
+        {% if page < total_pages %}
+        <button hx-get="/ui/partials/memories?page={{ page + 1 }}"
+                hx-target="#memory-list"
+                hx-include="#filter-form, #search-input, #category-select"
+                class="px-3 py-1.5 text-sm bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors">Next</button>
+        {% endif %}
+    </div>
+</div>
