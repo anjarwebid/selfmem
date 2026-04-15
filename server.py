@@ -139,7 +139,7 @@ async def delete_memory(id: str) -> str:
 
 
 # Mount MCP at /mcp
-app.mount("/mcp", mcp.streamable_http_app())
+app.mount("/", mcp.streamable_http_app())
 
 
 # --- REST API ---
