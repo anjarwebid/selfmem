@@ -408,7 +408,7 @@ async def ui_partials_memories(
         "memories": memories,
         "page": page,
         "total_pages": total_pages,
-        "current_user": user,
+        "current_user": raw_user,
     })
 
 
