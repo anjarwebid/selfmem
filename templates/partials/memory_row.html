@@ -1,7 +1,12 @@
-<div class="mem-row card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-4 group" id="memory-{{ mem.id }}">
+<div class="mem-row card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-4 group {{ 'border-l-2 border-l-amber-500/40' if mem.pinned else '' }}" id="memory-{{ mem.id }}">
     <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-2.5 flex-wrap">
+                {% if mem.pinned %}
+                <span class="text-amber-500" title="Pinned">
+                    <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+                </span>
+                {% endif %}
                 {% if mem.user_id and current_user is defined and current_user == '__all__' %}
                 <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ mem.user_id }}</span>
                 {% endif %}
@@ -22,6 +27,30 @@
             </div>
         </div>
         <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+            {% if mem.pinned %}
+            <button hx-post="/ui/memories/{{ mem.id }}/unpin"
+                    hx-target="#memory-{{ mem.id }}"
+                    hx-swap="outerHTML"
+                    class="p-2 text-amber-500 hover:text-amber-300 transition-colors rounded-lg hover:bg-white/[0.04]"
+                    title="Unpin">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+            </button>
+            {% else %}
+            <button hx-post="/ui/memories/{{ mem.id }}/pin"
+                    hx-target="#memory-{{ mem.id }}"
+                    hx-swap="outerHTML"
+                    class="p-2 text-gray-600 hover:text-amber-400 transition-colors rounded-lg hover:bg-white/[0.04]"
+                    title="Pin to top">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+            </button>
+            {% endif %}
+            <button hx-get="/ui/partials/memory/{{ mem.id }}/related"
+                    hx-target="#memory-{{ mem.id }}"
+                    hx-swap="afterend"
+                    class="p-2 text-gray-600 hover:text-cyan-400 transition-colors rounded-lg hover:bg-white/[0.04]"
+                    title="Related memories">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+            </button>
             <button hx-get="/ui/partials/memory/{{ mem.id }}/edit"
                     hx-target="#memory-{{ mem.id }}"
                     hx-swap="outerHTML"

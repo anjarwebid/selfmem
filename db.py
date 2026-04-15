@@ -25,15 +25,21 @@ CREATE TABLE IF NOT EXISTS memories (
     embedding vector({config.EMBEDDING_DIM}),
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ DEFAULT NULL
+    deleted_at TIMESTAMPTZ DEFAULT NULL,
+    pinned BOOLEAN DEFAULT FALSE
 );
 """
+
+MIGRATION_SQL = [
+    "ALTER TABLE memories ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT FALSE",
+]
 
 INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_memories_embedding ON memories USING hnsw (embedding vector_cosine_ops)",
     "CREATE INDEX IF NOT EXISTS idx_memories_fts ON memories USING GIN (to_tsvector('english', content))",
     "CREATE INDEX IF NOT EXISTS idx_memories_user_category ON memories (user_id, category)",
     "CREATE INDEX IF NOT EXISTS idx_memories_active ON memories (user_id) WHERE deleted_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_memories_pinned ON memories (user_id, pinned) WHERE pinned = TRUE AND deleted_at IS NULL",
 ]
 
 
@@ -48,6 +54,8 @@ async def init_db() -> None:
     bootstrap = await asyncpg.connect(config.DATABASE_URL)
     try:
         await bootstrap.execute(SCHEMA_SQL)
+        for mig_sql in MIGRATION_SQL:
+            await bootstrap.execute(mig_sql)
         for idx_sql in INDEX_SQL:
             await bootstrap.execute(idx_sql)
     finally:
@@ -96,7 +104,7 @@ async def save_memory(
             """
             INSERT INTO memories (user_id, content, category, tags, embedding)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, user_id, content, category, tags, created_at, updated_at
+            RETURNING id, user_id, content, category, tags, pinned, created_at, updated_at
             """,
             user_id,
             content,
@@ -111,7 +119,7 @@ async def get_memory(memory_id: str) -> dict | None:
     async with _pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, user_id, content, category, tags, created_at, updated_at, deleted_at
+            SELECT id, user_id, content, category, tags, pinned, created_at, updated_at, deleted_at
             FROM memories WHERE id = $1
             """,
             uuid.UUID(memory_id),
@@ -145,7 +153,7 @@ async def update_memory(
             UPDATE memories
             SET content = $1, category = $2, tags = $3, embedding = $4, updated_at = $5
             WHERE id = $6 AND deleted_at IS NULL
-            RETURNING id, user_id, content, category, tags, created_at, updated_at
+            RETURNING id, user_id, content, category, tags, pinned, created_at, updated_at
             """,
             new_content,
             new_category,
@@ -173,7 +181,7 @@ async def list_memories(
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    query = "SELECT id, user_id, content, category, tags, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
+    query = "SELECT id, user_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
     params: list = []
     idx = 1
 
@@ -192,7 +200,7 @@ async def list_memories(
         params.append(tags)
         idx += 1
 
-    query += f" ORDER BY updated_at DESC LIMIT ${idx} OFFSET ${idx + 1}"
+    query += f" ORDER BY pinned DESC, updated_at DESC LIMIT ${idx} OFFSET ${idx + 1}"
     params.extend([limit, offset])
 
     async with _pool.acquire() as conn:
@@ -362,6 +370,73 @@ async def count_archived(user_id: str = "") -> int:
         params = []
     async with _pool.acquire() as conn:
         return await conn.fetchval(query, *params)
+
+
+# --- Pin functions ---
+
+
+async def pin_memory(memory_id: str) -> bool:
+    async with _pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE memories SET pinned = TRUE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+            uuid.UUID(memory_id),
+        )
+    return result == "UPDATE 1"
+
+
+async def unpin_memory(memory_id: str) -> bool:
+    async with _pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE memories SET pinned = FALSE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+            uuid.UUID(memory_id),
+        )
+    return result == "UPDATE 1"
+
+
+# --- Related memories ---
+
+
+async def get_related_memories(
+    memory_id: str, user_id: str = "", limit: int = 5
+) -> list[dict]:
+    user_filter = "AND user_id = $2" if user_id else ""
+    params: list = [uuid.UUID(memory_id)]
+    if user_id:
+        params.append(user_id)
+    limit_idx = len(params) + 1
+    params.append(limit)
+
+    sql = f"""
+    SELECT id, user_id, content, category, tags, pinned, updated_at,
+           1 - (embedding <=> (SELECT embedding FROM memories WHERE id = $1)) AS similarity
+    FROM memories
+    WHERE id != $1 AND deleted_at IS NULL {user_filter}
+    ORDER BY embedding <=> (SELECT embedding FROM memories WHERE id = $1)
+    LIMIT ${limit_idx}
+    """
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(sql, *params)
+    results = []
+    for r in rows:
+        d = _row_to_dict(r)
+        d["similarity"] = round(float(r["similarity"]), 3)
+        results.append(d)
+    return results
+
+
+# --- Export ---
+
+
+async def export_memories(user_id: str = "") -> list[dict]:
+    query = "SELECT id, user_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
+    params = []
+    if user_id:
+        query += " AND user_id = $1"
+        params.append(user_id)
+    query += " ORDER BY pinned DESC, updated_at DESC"
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(query, *params)
+    return [_row_to_dict(r) for r in rows]
 
 
 # --- Archive functions ---

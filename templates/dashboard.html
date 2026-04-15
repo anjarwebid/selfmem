@@ -37,11 +37,23 @@
                    hx-trigger="keyup changed delay:300ms"
                    hx-target="#quick-results"
                    hx-include="this"
-                   hx-vals='{"user_id": "{{ current_user }}"}'>
+                   hx-vals='{"user_id": "{{ current_user if current_user != '__all__' else '' }}"}'
+                   hx-on::after-request="document.getElementById('quick-results-actions')?.classList.toggle('hidden', !this.value)">
         </div>
     </div>
 </div>
-<div id="quick-results"></div>
+<div id="quick-results">
+    <div id="quick-results-actions" class="hidden flex items-center justify-between mb-3">
+        <span class="text-[11px] text-gray-600 font-mono uppercase tracking-widest">Search results</span>
+        <div class="flex items-center gap-3">
+            <a href="/ui/memories" class="text-[12px] text-cyan-500 hover:text-cyan-400 transition-colors">View all in Memories</a>
+            <button onclick="document.querySelector('[name=query]').value=''; document.getElementById('quick-results').innerHTML=''; document.getElementById('quick-results-actions')?.classList.add('hidden')"
+                    class="text-gray-600 hover:text-gray-400 transition-colors p-1" title="Clear">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Recent memories -->
 <div class="mt-2">

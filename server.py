@@ -266,6 +266,78 @@ async def api_purge_memory(memory_id: str):
     return {"status": "purged", "id": memory_id}
 
 
+# --- Pin API ---
+
+
+@app.post("/api/v1/memories/{memory_id}/pin")
+async def api_pin_memory(memory_id: str):
+    ok = await db.pin_memory(memory_id)
+    if not ok:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return {"status": "pinned", "id": memory_id}
+
+
+@app.delete("/api/v1/memories/{memory_id}/pin")
+async def api_unpin_memory(memory_id: str):
+    ok = await db.unpin_memory(memory_id)
+    if not ok:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return {"status": "unpinned", "id": memory_id}
+
+
+# --- Export/Import API ---
+
+
+@app.get("/api/v1/export")
+async def api_export(user_id: str = Query("")):
+    memories = await db.export_memories(user_id)
+    # Strip internal fields for clean export
+    export_data = []
+    for m in memories:
+        export_data.append({
+            "content": m["content"],
+            "user_id": m["user_id"],
+            "category": m["category"],
+            "tags": m["tags"],
+            "pinned": m.get("pinned", False),
+            "created_at": m["created_at"],
+        })
+    from fastapi.responses import StreamingResponse
+    import io
+    content = json.dumps(export_data, indent=2)
+    return StreamingResponse(
+        io.BytesIO(content.encode()),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{user_id or 'all'}.json"},
+    )
+
+
+@app.post("/api/v1/import")
+async def api_import(request: Request):
+    body = await request.body()
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+    if not isinstance(data, list):
+        return JSONResponse({"error": "Expected JSON array"}, status_code=400)
+
+    imported = 0
+    for item in data:
+        content = item.get("content", "").strip()
+        user_id = item.get("user_id", "").strip()
+        if not content or not user_id:
+            continue
+        category = item.get("category", "general")
+        tags = item.get("tags", [])
+        embedding = embeddings.get_embedding(content)
+        await db.save_memory(user_id, content, category, tags, embedding)
+        imported += 1
+
+    return {"status": "ok", "imported": imported, "total": len(data)}
+
+
 # --- UI Routes ---
 
 
@@ -473,6 +545,102 @@ async def ui_delete_memory(request: Request, memory_id: str):
     await db.delete_memory(memory_id)
     response = HTMLResponse("")
     response.headers.update(_toast_headers("Memory archived"))
+    return response
+
+
+# --- UI Pin/Related ---
+
+
+@app.post("/ui/memories/{memory_id}/pin", response_class=HTMLResponse)
+async def ui_pin_memory(request: Request, memory_id: str):
+    await db.pin_memory(memory_id)
+    mem = await db.get_memory(memory_id)
+    raw_user = await _get_current_user(request)
+    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_user": raw_user})
+    response.headers.update(_toast_headers("Memory pinned"))
+    return response
+
+
+@app.post("/ui/memories/{memory_id}/unpin", response_class=HTMLResponse)
+async def ui_unpin_memory(request: Request, memory_id: str):
+    await db.unpin_memory(memory_id)
+    mem = await db.get_memory(memory_id)
+    raw_user = await _get_current_user(request)
+    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_user": raw_user})
+    response.headers.update(_toast_headers("Memory unpinned"))
+    return response
+
+
+@app.get("/ui/partials/memory/{memory_id}/related", response_class=HTMLResponse)
+async def ui_related_memories(request: Request, memory_id: str):
+    mem = await db.get_memory(memory_id)
+    user_id = mem["user_id"] if mem else ""
+    related = await db.get_related_memories(memory_id, user_id, limit=5)
+    return _render(request, "partials/related_list.html", {"memories": related, "source_id": memory_id})
+
+
+# --- UI Export/Import ---
+
+
+@app.get("/ui/export", response_class=HTMLResponse)
+async def ui_export(request: Request):
+    raw_user = await _get_current_user(request)
+    db_user = _resolve_user(raw_user)
+    memories = await db.export_memories(db_user)
+    export_data = []
+    for m in memories:
+        export_data.append({
+            "content": m["content"],
+            "user_id": m["user_id"],
+            "category": m["category"],
+            "tags": m["tags"],
+            "pinned": m.get("pinned", False),
+            "created_at": m["created_at"],
+        })
+    import io
+    from starlette.responses import StreamingResponse
+    content = json.dumps(export_data, indent=2)
+    return StreamingResponse(
+        io.BytesIO(content.encode()),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{db_user or 'all'}.json"},
+    )
+
+
+@app.post("/ui/import", response_class=HTMLResponse)
+async def ui_import(request: Request):
+    form = await request.form()
+    upload = form.get("file")
+    if not upload:
+        response = HTMLResponse("<div class='text-red-400 text-sm'>No file selected</div>")
+        response.headers.update(_toast_headers("No file selected", "error"))
+        return response
+
+    content = await upload.read()
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        response = HTMLResponse("<div class='text-red-400 text-sm'>Invalid JSON file</div>")
+        response.headers.update(_toast_headers("Invalid JSON file", "error"))
+        return response
+
+    if not isinstance(data, list):
+        response = HTMLResponse("<div class='text-red-400 text-sm'>Expected JSON array</div>")
+        response.headers.update(_toast_headers("Expected JSON array", "error"))
+        return response
+
+    imported = 0
+    for item in data:
+        c = item.get("content", "").strip()
+        uid = item.get("user_id", "").strip()
+        if not c or not uid:
+            continue
+        embedding = embeddings.get_embedding(c)
+        await db.save_memory(uid, c, item.get("category", "general"), item.get("tags", []), embedding)
+        imported += 1
+
+    response = HTMLResponse(f"<div class='text-emerald-400 text-sm'>{imported} memories imported</div>")
+    response.headers.update(_toast_headers(f"{imported} memories imported"))
     return response
 
 
