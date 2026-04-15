@@ -10,7 +10,7 @@
             </div>
             <div class="text-[13px] text-gray-500 whitespace-pre-wrap line-clamp-3 leading-relaxed">{{ mem.content }}</div>
             <div class="flex items-center gap-4 mt-3 text-[11px] font-mono">
-                <span class="text-gray-700">deleted {{ mem.deleted_at[:16] if mem.deleted_at else '' }}</span>
+                <span class="text-gray-700">deleted <span data-utc="{{ mem.deleted_at or '' }}">{{ mem.deleted_at[:16] if mem.deleted_at else '' }}</span></span>
                 <span class="text-gray-800">{{ mem.id[:8] }}</span>
             </div>
         </div>

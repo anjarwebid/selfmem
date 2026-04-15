@@ -14,7 +14,7 @@
                  onclick="this.classList.toggle('line-clamp-3')"
                  title="Click to expand/collapse">{{ mem.content }}</div>
             <div class="flex items-center gap-4 mt-3 text-[11px] font-mono">
-                <span class="text-gray-700">{{ mem.updated_at[:16] if mem.updated_at else '' }}</span>
+                <span class="text-gray-700" data-utc="{{ mem.updated_at or '' }}">{{ mem.updated_at[:16] if mem.updated_at else '' }}</span>
                 <span class="text-gray-800">{{ mem.id[:8] }}</span>
                 {% if mem.score is defined %}
                 <span class="text-cyan-700">{{ "%.3f"|format(mem.score) }}</span>

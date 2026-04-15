@@ -22,7 +22,7 @@
     </div>
     <div class="stat-card card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5">
         <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Last Activity</p>
-        <p class="text-lg font-mono text-gray-400 mt-3">{{ stats.latest or 'N/A' }}</p>
+        <p class="text-lg font-mono text-gray-400 mt-3" data-utc="{{ stats.latest or '' }}">{{ stats.latest or 'N/A' }}</p>
     </div>
 </div>
 

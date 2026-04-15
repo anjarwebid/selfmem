@@ -102,6 +102,24 @@
     <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2.5"></div>
 
     <script>
+        // Convert UTC timestamps to browser local time
+        function localizeTimestamps() {
+            document.querySelectorAll('[data-utc]').forEach(el => {
+                const utc = el.getAttribute('data-utc');
+                if (!utc) return;
+                const d = new Date(utc.endsWith('Z') ? utc : utc + 'Z');
+                if (isNaN(d)) return;
+                const fmt = el.getAttribute('data-fmt') || 'datetime';
+                if (fmt === 'date') {
+                    el.textContent = d.toLocaleDateString();
+                } else {
+                    el.textContent = d.toLocaleString(undefined, {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+                }
+            });
+        }
+        localizeTimestamps();
+        document.body.addEventListener('htmx:afterSwap', localizeTimestamps);
+
         document.body.addEventListener("showToast", function(evt) {
             const data = evt.detail;
             const toast = document.createElement("div");
