@@ -22,10 +22,11 @@
 
         <div class="flex flex-wrap gap-2">
             {% for tag in tags %}
-            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 border border-white/[0.03] text-[12px] text-gray-400 hover:border-accent/20 hover:text-gray-300 transition-all">
+            <a href="/ui/memories?filter_tag={{ tag.tag }}"
+               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 border border-white/[0.03] text-[12px] text-gray-400 hover:border-accent/20 hover:text-gray-300 hover:bg-surface-700 transition-all">
                 <span>{{ tag.tag }}</span>
                 <span class="text-gray-700 font-mono text-[10px]">{{ tag.count }}</span>
-            </span>
+            </a>
             {% endfor %}
         </div>
     </div>
