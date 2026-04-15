@@ -6,11 +6,18 @@
         <h2 class="text-2xl font-semibold text-white">Memories</h2>
         <p class="text-sm text-gray-600 mt-1"><span class="text-gray-400 font-mono">{{ total }}</span> entries for <span class="text-gray-400 font-mono">{{ current_user }}</span></p>
     </div>
-    <button onclick="document.getElementById('add-form').classList.toggle('hidden')"
-            class="btn-primary bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        Add Memory
-    </button>
+    <div class="flex items-center gap-2">
+        <button onclick="htmx.ajax('GET', '/ui/partials/memories?user_id={{ current_user if current_user != '__all__' else '' }}', {target:'#memory-list', swap:'outerHTML'})"
+                class="p-2.5 text-gray-500 hover:text-cyan-400 bg-surface-800 border border-white/[0.06] rounded-lg hover:bg-surface-700 transition-all"
+                title="Refresh">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+        <button onclick="document.getElementById('add-form').classList.toggle('hidden')"
+                class="btn-primary bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add Memory
+        </button>
+    </div>
 </div>
 
 <!-- Add memory form -->
