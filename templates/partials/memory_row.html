@@ -2,6 +2,9 @@
     <div class="flex items-start justify-between gap-4">
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-2.5 flex-wrap">
+                {% if mem.user_id and current_user is defined and current_user == '__all__' %}
+                <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ mem.user_id }}</span>
+                {% endif %}
                 <span class="badge-cyan text-[11px] px-2.5 py-0.5 rounded-md font-mono">{{ mem.category }}</span>
                 {% for tag in mem.tags %}
                 <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md">{{ tag }}</span>

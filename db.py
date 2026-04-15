@@ -167,15 +167,20 @@ async def delete_memory(memory_id: str) -> bool:
 
 
 async def list_memories(
-    user_id: str,
+    user_id: str = "",
     category: str = "",
     tags: list[str] | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    query = "SELECT id, user_id, content, category, tags, created_at, updated_at FROM memories WHERE user_id = $1 AND deleted_at IS NULL"
-    params: list = [user_id]
-    idx = 2
+    query = "SELECT id, user_id, content, category, tags, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
+    params: list = []
+    idx = 1
+
+    if user_id:
+        query += f" AND user_id = ${idx}"
+        params.append(user_id)
+        idx += 1
 
     if category:
         query += f" AND category = ${idx}"
@@ -196,24 +201,30 @@ async def list_memories(
 
 
 async def search_memories(
-    user_id: str,
-    query_text: str,
-    query_embedding: list[float],
+    user_id: str = "",
+    query_text: str = "",
+    query_embedding: list[float] | None = None,
     category: str = "",
     tags: list[str] | None = None,
     limit: int = 20,
 ) -> list[dict]:
-    filters = ""
-    params: list = [query_text, user_id, query_embedding, limit]
-    idx = 5
+    user_filter = f"AND user_id = $2" if user_id else ""
+    params: list = [query_text]
+    if user_id:
+        params.append(user_id)
+    embed_idx = len(params) + 1
+    params.append(query_embedding)
+    limit_idx = len(params) + 1
+    params.append(limit)
 
+    extra_filters = ""
+    idx = limit_idx + 1
     if category:
-        filters += f" AND m.category = ${idx}"
+        extra_filters += f" AND m.category = ${idx}"
         params.append(category)
         idx += 1
-
     if tags:
-        filters += f" AND m.tags && ${idx}"
+        extra_filters += f" AND m.tags && ${idx}"
         params.append(tags)
         idx += 1
 
@@ -222,28 +233,28 @@ async def search_memories(
         SELECT id,
                ts_rank(to_tsvector('english', content), plainto_tsquery('english', $1)) AS text_rank
         FROM memories
-        WHERE user_id = $2
-          AND deleted_at IS NULL
+        WHERE deleted_at IS NULL
+          {user_filter}
           AND to_tsvector('english', content) @@ plainto_tsquery('english', $1)
     ),
     sem AS (
         SELECT id,
-               1 - (embedding <=> $3::vector) AS cosine_sim
+               1 - (embedding <=> ${embed_idx}::vector) AS cosine_sim
         FROM memories
-        WHERE user_id = $2
-          AND deleted_at IS NULL
+        WHERE deleted_at IS NULL
+          {user_filter}
     )
     SELECT m.id, m.user_id, m.content, m.category, m.tags, m.created_at, m.updated_at,
            COALESCE(f.text_rank, 0) * 0.4 + COALESCE(s.cosine_sim, 0) * 0.6 AS score
     FROM memories m
     LEFT JOIN fts f ON m.id = f.id
     LEFT JOIN sem s ON m.id = s.id
-    WHERE m.user_id = $2
-      AND m.deleted_at IS NULL
+    WHERE m.deleted_at IS NULL
+      {user_filter}
       AND (f.id IS NOT NULL OR COALESCE(s.cosine_sim, 0) > 0.3)
-      {filters}
+      {extra_filters}
     ORDER BY score DESC
-    LIMIT $4
+    LIMIT ${limit_idx}
     """
 
     async with _pool.acquire() as conn:
@@ -282,31 +293,59 @@ async def get_user_stats() -> list[dict]:
     return results
 
 
-async def get_categories(user_id: str) -> list[str]:
+async def get_categories(user_id: str = "") -> list[str]:
+    if user_id:
+        query = "SELECT DISTINCT category FROM memories WHERE user_id = $1 AND deleted_at IS NULL ORDER BY category"
+        params = [user_id]
+    else:
+        query = "SELECT DISTINCT category FROM memories WHERE deleted_at IS NULL ORDER BY category"
+        params = []
     async with _pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT DISTINCT category FROM memories WHERE user_id = $1 AND deleted_at IS NULL ORDER BY category",
-            user_id,
-        )
+        rows = await conn.fetch(query, *params)
     return [r["category"] for r in rows]
 
 
-async def count_memories(user_id: str, category: str = "") -> int:
-    query = "SELECT COUNT(*) FROM memories WHERE user_id = $1 AND deleted_at IS NULL"
-    params: list = [user_id]
+async def get_categories_with_counts(user_id: str = "") -> list[dict]:
+    query = """
+        SELECT user_id, category, COUNT(*) AS count
+        FROM memories
+        WHERE deleted_at IS NULL
+    """
+    params = []
+    if user_id:
+        query += " AND user_id = $1"
+        params.append(user_id)
+    query += " GROUP BY user_id, category ORDER BY user_id, count DESC"
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(query, *params)
+    return [dict(r) for r in rows]
+
+
+async def count_memories(user_id: str = "", category: str = "") -> int:
+    query = "SELECT COUNT(*) FROM memories WHERE deleted_at IS NULL"
+    params: list = []
+    idx = 1
+    if user_id:
+        query += f" AND user_id = ${idx}"
+        params.append(user_id)
+        idx += 1
     if category:
-        query += " AND category = $2"
+        query += f" AND category = ${idx}"
         params.append(category)
+        idx += 1
     async with _pool.acquire() as conn:
         return await conn.fetchval(query, *params)
 
 
-async def count_archived(user_id: str) -> int:
+async def count_archived(user_id: str = "") -> int:
+    if user_id:
+        query = "SELECT COUNT(*) FROM memories WHERE user_id = $1 AND deleted_at IS NOT NULL"
+        params = [user_id]
+    else:
+        query = "SELECT COUNT(*) FROM memories WHERE deleted_at IS NOT NULL"
+        params = []
     async with _pool.acquire() as conn:
-        return await conn.fetchval(
-            "SELECT COUNT(*) FROM memories WHERE user_id = $1 AND deleted_at IS NOT NULL",
-            user_id,
-        )
+        return await conn.fetchval(query, *params)
 
 
 # --- Archive functions ---

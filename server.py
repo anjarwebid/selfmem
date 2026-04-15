@@ -271,10 +271,18 @@ async def api_purge_memory(memory_id: str):
 
 async def _get_current_user(request: Request) -> str:
     user = request.cookies.get("selfmem_user", "")
-    if not user:
+    if user == "":
+        # Check if explicitly set to "" (All Users) vs never set
+        if "selfmem_user" in request.cookies:
+            return "__all__"
         stats = await db.get_user_stats()
         user = stats[0]["user_id"] if stats else "default"
     return user
+
+
+def _resolve_user(current_user: str) -> str:
+    """Convert UI user to DB user_id. __all__ -> empty string for db queries."""
+    return "" if current_user == "__all__" else current_user
 
 
 async def _base_context(request: Request, active_page: str) -> dict:
@@ -332,33 +340,33 @@ async def ui_set_user(request: Request):
 @app.get("/ui/", response_class=HTMLResponse)
 async def ui_dashboard(request: Request):
     ctx = await _base_context(request, "dashboard")
-    user = ctx["current_user"]
-    mem_count = await db.count_memories(user)
-    categories = await db.get_categories(user)
-    archived = await db.count_archived(user)
+    db_user = _resolve_user(ctx["current_user"])
+    mem_count = await db.count_memories(db_user)
+    categories = await db.get_categories(db_user)
+    archived = await db.count_archived(db_user) if db_user else 0
     # Find latest from user stats
     latest = ""
     for u in ctx["users"]:
-        if u["user_id"] == user and u.get("latest_at"):
-            latest = u["latest_at"][:16]
-            break
+        if (not db_user or u["user_id"] == db_user) and u.get("latest_at"):
+            if not latest or u["latest_at"] > latest:
+                latest = u["latest_at"]
     ctx["stats"] = {
         "memories": mem_count,
         "categories": len(categories),
         "archived": archived,
-        "latest": latest,
+        "latest": latest[:16] if latest else "N/A",
     }
-    ctx["memories"] = await db.list_memories(user, limit=10)
+    ctx["memories"] = await db.list_memories(db_user, limit=10)
     return _render(request, "dashboard.html", ctx)
 
 
 @app.get("/ui/memories", response_class=HTMLResponse)
 async def ui_memories(request: Request):
     ctx = await _base_context(request, "memories")
-    user = ctx["current_user"]
-    ctx["categories"] = await db.get_categories(user)
-    ctx["total"] = await db.count_memories(user)
-    memories = await db.list_memories(user, limit=PAGE_SIZE)
+    db_user = _resolve_user(ctx["current_user"])
+    ctx["categories"] = await db.get_categories(db_user)
+    ctx["total"] = await db.count_memories(db_user)
+    memories = await db.list_memories(db_user, limit=PAGE_SIZE)
     total_pages = max(1, math.ceil(ctx["total"] / PAGE_SIZE))
     ctx["memories"] = memories
     ctx["page"] = 1
@@ -374,18 +382,19 @@ async def ui_partials_memories(
     category: str = Query(""),
     page: int = Query(1),
 ):
-    user = user_id or await _get_current_user(request)
+    raw_user = user_id or await _get_current_user(request)
+    db_user = _resolve_user(raw_user)
     offset = (page - 1) * PAGE_SIZE
 
     if query:
         query_embedding = embeddings.get_embedding(query)
-        memories = await db.search_memories(user, query, query_embedding, category, limit=PAGE_SIZE)
+        memories = await db.search_memories(db_user, query, query_embedding, category, limit=PAGE_SIZE)
         total = len(memories)
         total_pages = 1
     else:
-        total = await db.count_memories(user, category)
+        total = await db.count_memories(db_user, category)
         total_pages = max(1, math.ceil(total / PAGE_SIZE))
-        memories = await db.list_memories(user, category=category, limit=PAGE_SIZE, offset=offset)
+        memories = await db.list_memories(db_user, category=category, limit=PAGE_SIZE, offset=offset)
 
     return _render(request, "partials/memory_list.html", {
         "memories": memories,
@@ -457,6 +466,27 @@ async def ui_delete_memory(request: Request, memory_id: str):
     response = HTMLResponse("")
     response.headers.update(_toast_headers("Memory archived"))
     return response
+
+
+# --- UI Categories ---
+
+
+@app.get("/ui/categories", response_class=HTMLResponse)
+async def ui_categories(request: Request):
+    ctx = await _base_context(request, "categories")
+    db_user = _resolve_user(ctx["current_user"])
+    rows = await db.get_categories_with_counts(db_user)
+
+    # Group by user_id
+    categories_by_user: dict[str, list] = {}
+    for row in rows:
+        uid = row["user_id"]
+        if uid not in categories_by_user:
+            categories_by_user[uid] = []
+        categories_by_user[uid].append(row)
+
+    ctx["categories_by_user"] = categories_by_user
+    return _render(request, "categories.html", ctx)
 
 
 # --- UI Archive ---
