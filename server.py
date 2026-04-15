@@ -27,6 +27,11 @@ logging.basicConfig(
 log = logging.getLogger("selfmem")
 
 
+# --- MCP server ---
+
+mcp = FastMCP("selfmem")
+
+
 # --- Lifespan ---
 
 
@@ -34,8 +39,12 @@ log = logging.getLogger("selfmem")
 async def lifespan(app: FastAPI):
     await db.init_db()
     embeddings.get_embedding("warmup")
-    log.info("SelfMem ready on %s:%s", config.HOST, config.PORT)
-    yield
+    # Initialize MCP session manager for streamable HTTP
+    mcp_app = mcp.streamable_http_app()
+    app.mount("/", mcp_app)
+    async with mcp._session_manager.run():
+        log.info("SelfMem ready on %s:%s", config.HOST, config.PORT)
+        yield
     await db.close_db()
 
 
@@ -47,11 +56,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 PAGE_SIZE = 20
-
-
-# --- MCP server ---
-
-mcp = FastMCP("selfmem")
 
 
 @mcp.tool()
@@ -139,9 +143,6 @@ async def delete_memory(id: str) -> str:
 
 
 # Mount MCP at /mcp
-app.mount("/", mcp.streamable_http_app())
-
-
 # --- REST API ---
 
 
