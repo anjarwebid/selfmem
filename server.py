@@ -29,7 +29,14 @@ log = logging.getLogger("selfmem")
 
 # --- MCP server ---
 
-mcp = FastMCP("selfmem")
+mcp = FastMCP(
+    "selfmem",
+    host="0.0.0.0",
+    port=config.PORT,
+    transport_security={
+        "enable_dns_rebinding_protection": False,
+    },
+)
 
 
 # --- Lifespan ---
