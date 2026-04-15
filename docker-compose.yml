@@ -2,6 +2,7 @@ services:
   db:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
+    env_file: .env
     environment:
       POSTGRES_DB: selfmem
       POSTGRES_USER: selfmem
@@ -16,17 +17,15 @@ services:
 
   selfmem:
     build: .
-    container_name: selfmem
     restart: unless-stopped
-    ports:
-      - "8818:8818"
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql://selfmem:${POSTGRES_PASSWORD:-changeme}@db:5432/selfmem
       - SELFMEM_API_KEYS=${SELFMEM_API_KEYS}
+      - SELFMEM_SESSION_SECRET=${SELFMEM_SESSION_SECRET:-change-me-in-production}
       - EMBEDDING_MODEL=all-MiniLM-L6-v2
     depends_on:
-      db:
-        condition: service_healthy
+      - db
 
 volumes:
   pgdata:
