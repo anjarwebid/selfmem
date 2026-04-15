@@ -321,6 +321,22 @@ async def get_categories_with_counts(user_id: str = "") -> list[dict]:
     return [dict(r) for r in rows]
 
 
+async def get_tags_with_counts(user_id: str = "") -> list[dict]:
+    query = """
+        SELECT user_id, tag, COUNT(*) AS count
+        FROM memories, UNNEST(tags) AS tag
+        WHERE deleted_at IS NULL
+    """
+    params = []
+    if user_id:
+        query += " AND user_id = $1"
+        params.append(user_id)
+    query += " GROUP BY user_id, tag ORDER BY user_id, count DESC"
+    async with _pool.acquire() as conn:
+        rows = await conn.fetch(query, *params)
+    return [dict(r) for r in rows]
+
+
 async def count_memories(user_id: str = "", category: str = "") -> int:
     query = "SELECT COUNT(*) FROM memories WHERE deleted_at IS NULL"
     params: list = []
@@ -352,23 +368,21 @@ async def count_archived(user_id: str = "") -> int:
 
 
 async def list_archived(
-    user_id: str,
+    user_id: str = "",
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
+    query = "SELECT id, user_id, content, category, tags, created_at, updated_at, deleted_at FROM memories WHERE deleted_at IS NOT NULL"
+    params: list = []
+    idx = 1
+    if user_id:
+        query += f" AND user_id = ${idx}"
+        params.append(user_id)
+        idx += 1
+    query += f" ORDER BY deleted_at DESC LIMIT ${idx} OFFSET ${idx + 1}"
+    params.extend([limit, offset])
     async with _pool.acquire() as conn:
-        rows = await conn.fetch(
-            """
-            SELECT id, user_id, content, category, tags, created_at, updated_at, deleted_at
-            FROM memories
-            WHERE user_id = $1 AND deleted_at IS NOT NULL
-            ORDER BY deleted_at DESC
-            LIMIT $2 OFFSET $3
-            """,
-            user_id,
-            limit,
-            offset,
-        )
+        rows = await conn.fetch(query, *params)
     return [_row_to_dict(r) for r in rows]
 
 

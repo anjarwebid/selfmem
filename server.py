@@ -468,6 +468,26 @@ async def ui_delete_memory(request: Request, memory_id: str):
     return response
 
 
+# --- UI Tags ---
+
+
+@app.get("/ui/tags", response_class=HTMLResponse)
+async def ui_tags(request: Request):
+    ctx = await _base_context(request, "tags")
+    db_user = _resolve_user(ctx["current_user"])
+    rows = await db.get_tags_with_counts(db_user)
+
+    tags_by_user: dict[str, list] = {}
+    for row in rows:
+        uid = row["user_id"]
+        if uid not in tags_by_user:
+            tags_by_user[uid] = []
+        tags_by_user[uid].append(row)
+
+    ctx["tags_by_user"] = tags_by_user
+    return _render(request, "tags.html", ctx)
+
+
 # --- UI Categories ---
 
 
@@ -495,16 +515,17 @@ async def ui_categories(request: Request):
 @app.get("/ui/archive", response_class=HTMLResponse)
 async def ui_archive(request: Request):
     ctx = await _base_context(request, "archive")
-    user = ctx["current_user"]
-    ctx["memories"] = await db.list_archived(user)
+    db_user = _resolve_user(ctx["current_user"])
+    ctx["memories"] = await db.list_archived(db_user)
     return _render(request, "archive.html", ctx)
 
 
 @app.get("/ui/partials/archive", response_class=HTMLResponse)
 async def ui_partials_archive(request: Request):
-    user = await _get_current_user(request)
-    memories = await db.list_archived(user)
-    return _render(request, "partials/archive_list.html", {"memories": memories})
+    raw_user = await _get_current_user(request)
+    db_user = _resolve_user(raw_user)
+    memories = await db.list_archived(db_user)
+    return _render(request, "partials/archive_list.html", {"memories": memories, "current_user": raw_user})
 
 
 @app.post("/ui/archive/{memory_id}/restore", response_class=HTMLResponse)

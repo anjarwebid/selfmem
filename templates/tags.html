@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Tags - SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Tags</h2>
+    <p class="text-sm text-gray-600 mt-1">Memory tags {% if current_user != '__all__' %}for <span class="text-gray-400 font-mono">{{ current_user }}</span>{% else %}across <span class="text-gray-400">all users</span>{% endif %}</p>
+</div>
+
+{% if tags_by_user %}
+<div class="space-y-6 stagger">
+    {% for user_id, tags in tags_by_user.items() %}
+    <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6">
+        <div class="flex items-center gap-3 mb-5">
+            <div class="w-7 h-7 rounded-lg bg-surface-700 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </div>
+            <div>
+                <h3 class="text-sm font-medium text-white font-mono">{{ user_id }}</h3>
+                <p class="text-[11px] text-gray-600">{{ tags|length }} tags</p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            {% for tag in tags %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-900 border border-white/[0.03] text-[12px] text-gray-400 hover:border-accent/20 hover:text-gray-300 transition-all">
+                <span>{{ tag.tag }}</span>
+                <span class="text-gray-700 font-mono text-[10px]">{{ tag.count }}</span>
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state text-center py-16 rounded-xl">
+    <svg class="w-10 h-10 text-gray-800 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/></svg>
+    <p class="text-gray-600 text-sm">No tags yet</p>
+    <p class="text-gray-800 text-xs mt-1">Tags appear when you save memories with tags</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -3,6 +3,9 @@
         <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-2.5 flex-wrap">
                 <span class="badge-red text-[11px] px-2.5 py-0.5 rounded-md font-mono">archived</span>
+                {% if mem.user_id and current_user is defined and current_user == '__all__' %}
+                <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ mem.user_id }}</span>
+                {% endif %}
                 <span class="badge-ghost text-[11px] px-2.5 py-0.5 rounded-md font-mono">{{ mem.category }}</span>
             </div>
             <div class="text-[13px] text-gray-500 whitespace-pre-wrap line-clamp-3 leading-relaxed">{{ mem.content }}</div>
