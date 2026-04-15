@@ -11,7 +11,8 @@
             theme: {
                 extend: {
                     colors: {
-                        dark: { 950: '#0a0a0f', 900: '#111118', 800: '#1a1a24', 700: '#252530', 600: '#35354a' }
+                        surface: { 950: '#08080c', 900: '#0e0e14', 800: '#16161f', 700: '#1e1e2a', 600: '#2a2a3a', 500: '#3a3a50' },
+                        accent: '#22d3ee'
                     }
                 }
             }
@@ -20,18 +21,28 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <link rel="stylesheet" href="/static/style.css">
 </head>
-<body class="bg-dark-950 text-gray-100 min-h-screen flex">
+<body class="bg-surface-950 text-gray-300 min-h-screen flex">
+
     <!-- Sidebar -->
-    <nav class="w-56 bg-dark-900 border-r border-dark-600 flex flex-col fixed h-full z-10 lg:relative" id="sidebar">
-        <div class="p-5 border-b border-dark-600">
-            <h1 class="text-xl font-bold tracking-tight">SelfMem</h1>
-            <p class="text-xs text-gray-500 mt-1">Personal Memory Server</p>
+    <nav class="w-60 bg-surface-900 flex flex-col fixed h-full z-10 border-r border-white/[0.04]" id="sidebar">
+        <div class="px-5 py-6">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center shrink-0">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-[15px] font-semibold text-white tracking-tight">SelfMem</h1>
+                    <p class="text-[10px] text-gray-600 font-mono uppercase tracking-widest">memory server</p>
+                </div>
+            </div>
         </div>
 
-        <div class="p-4 border-b border-dark-600">
-            <label class="text-xs text-gray-500 uppercase tracking-wider">User</label>
+        <div class="glow-line mx-4"></div>
+
+        <div class="px-4 py-4">
+            <label class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2 block">Active User</label>
             <select id="user-switcher"
-                    class="mt-1 w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    class="w-full bg-surface-800 border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-accent/30 focus:ring-1 focus:ring-accent/20 transition-all"
                     hx-post="/ui/set-user"
                     hx-vals="js:{user_id: event.target.value}"
                     hx-swap="none"
@@ -44,52 +55,57 @@
             </select>
         </div>
 
-        <div class="flex-1 p-3 space-y-1">
-            <a href="/ui/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ 'bg-dark-700 text-white' if active_page == 'dashboard' else 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        <div class="flex-1 px-3 py-2 space-y-0.5">
+            <a href="/ui/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] {{ 'nav-active bg-white/[0.04] text-white font-medium' if active_page == 'dashboard' else 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]' }} transition-all">
+                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                 Dashboard
             </a>
-            <a href="/ui/memories" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ 'bg-dark-700 text-white' if active_page == 'memories' else 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <a href="/ui/memories" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] {{ 'nav-active bg-white/[0.04] text-white font-medium' if active_page == 'memories' else 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]' }} transition-all">
+                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                 Memories
             </a>
-            <a href="/ui/archive" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ 'bg-dark-700 text-white' if active_page == 'archive' else 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+            <a href="/ui/archive" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] {{ 'nav-active bg-white/[0.04] text-white font-medium' if active_page == 'archive' else 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]' }} transition-all">
+                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
                 Archive
             </a>
-            <a href="/ui/settings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm {{ 'bg-dark-700 text-white' if active_page == 'settings' else 'text-gray-400 hover:text-white hover:bg-dark-800' }} transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <a href="/ui/settings" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] {{ 'nav-active bg-white/[0.04] text-white font-medium' if active_page == 'settings' else 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.03]' }} transition-all">
+                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 Settings
             </a>
         </div>
 
-        <div class="p-3 border-t border-dark-600">
-            <a href="/ui/logout" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-red-400 hover:bg-dark-800 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        <div class="px-3 py-3 border-t border-white/[0.04]">
+            <a href="/ui/logout" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-gray-600 hover:text-red-400 hover:bg-red-500/[0.05] transition-all">
+                <svg class="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
                 Logout
             </a>
         </div>
     </nav>
 
     <!-- Main content -->
-    <main class="flex-1 lg:ml-0 min-h-screen">
-        <div class="max-w-6xl mx-auto p-6">
+    <main class="flex-1 ml-60 min-h-screen">
+        <div class="max-w-5xl mx-auto px-8 py-8">
             {% block content %}{% endblock %}
         </div>
     </main>
 
     <!-- Toast container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <div id="toast-container" class="fixed top-5 right-5 z-50 space-y-2.5"></div>
 
     <script>
         document.body.addEventListener("showToast", function(evt) {
             const data = evt.detail;
             const toast = document.createElement("div");
             const isError = data.type === "error";
-            toast.className = `toast px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${isError ? 'bg-red-900/90 text-red-200 border border-red-700' : 'bg-emerald-900/90 text-emerald-200 border border-emerald-700'}`;
-            toast.textContent = data.message || "Done";
+            toast.className = `toast px-5 py-3.5 rounded-xl text-sm font-medium border ${isError
+                ? 'bg-red-950/80 text-red-300 border-red-800/30'
+                : 'bg-emerald-950/80 text-emerald-300 border-emerald-800/30'}`;
+            toast.innerHTML = `<div class="flex items-center gap-2.5">${isError
+                ? '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'
+                : '<svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>'
+            }<span>${data.message || "Done"}</span></div>`;
             document.getElementById("toast-container").appendChild(toast);
-            setTimeout(() => { toast.classList.add("toast-out"); setTimeout(() => toast.remove(), 300); }, 3000);
+            setTimeout(() => { toast.classList.add("toast-out"); setTimeout(() => toast.remove(), 300); }, 3500);
         });
     </script>
 </body>

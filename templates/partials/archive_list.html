@@ -1,12 +1,13 @@
-<div id="archive-list" class="space-y-3">
+<div id="archive-list" class="space-y-2.5 stagger">
     {% if memories %}
     {% for mem in memories %}
     {% include "partials/archive_row.html" %}
     {% endfor %}
     {% else %}
-    <div class="text-center py-12 text-gray-500">
-        <p class="text-lg">Archive is empty</p>
-        <p class="text-sm mt-1">Deleted memories will appear here</p>
+    <div class="empty-state text-center py-16 rounded-xl">
+        <svg class="w-10 h-10 text-gray-800 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+        <p class="text-gray-600 text-sm">Archive is empty</p>
+        <p class="text-gray-800 text-xs mt-1">Deleted memories will appear here</p>
     </div>
     {% endif %}
 </div>
