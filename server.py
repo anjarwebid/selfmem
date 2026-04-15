@@ -354,7 +354,7 @@ async def ui_dashboard(request: Request):
         "memories": mem_count,
         "categories": len(categories),
         "archived": archived,
-        "latest": latest[:16] if latest else "N/A",
+        "latest": latest if latest else "",
     }
     ctx["memories"] = await db.list_memories(db_user, limit=10)
     return _render(request, "dashboard.html", ctx)
