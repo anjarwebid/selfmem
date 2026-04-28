@@ -18,7 +18,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS memories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id VARCHAR(100) NOT NULL,
+    project_id VARCHAR(100) NOT NULL,
     content TEXT NOT NULL,
     category VARCHAR(100) DEFAULT 'general',
     tags TEXT[] DEFAULT '{{}}'::TEXT[],
@@ -30,16 +30,60 @@ CREATE TABLE IF NOT EXISTS memories (
 );
 """
 
+# Idempotent migrations. Each statement must be safe to run on both fresh and
+# existing databases.
 MIGRATION_SQL = [
     "ALTER TABLE memories ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT FALSE",
+    # user_id -> project_id rename. Guarded so it only runs on legacy DBs.
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'memories' AND column_name = 'user_id'
+        ) AND NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'memories' AND column_name = 'project_id'
+        ) THEN
+            ALTER TABLE memories RENAME COLUMN user_id TO project_id;
+        END IF;
+    END $$
+    """,
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_user_category')
+           AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_project_category') THEN
+            ALTER INDEX idx_memories_user_category RENAME TO idx_memories_project_category;
+        END IF;
+    END $$
+    """,
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_active')
+           AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_project_active') THEN
+            ALTER INDEX idx_memories_active RENAME TO idx_memories_project_active;
+        END IF;
+    END $$
+    """,
+    """
+    DO $$
+    BEGIN
+        IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_pinned')
+           AND NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_memories_project_pinned') THEN
+            ALTER INDEX idx_memories_pinned RENAME TO idx_memories_project_pinned;
+        END IF;
+    END $$
+    """,
 ]
 
 INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_memories_embedding ON memories USING hnsw (embedding vector_cosine_ops)",
     "CREATE INDEX IF NOT EXISTS idx_memories_fts ON memories USING GIN (to_tsvector('english', content))",
-    "CREATE INDEX IF NOT EXISTS idx_memories_user_category ON memories (user_id, category)",
-    "CREATE INDEX IF NOT EXISTS idx_memories_active ON memories (user_id) WHERE deleted_at IS NULL",
-    "CREATE INDEX IF NOT EXISTS idx_memories_pinned ON memories (user_id, pinned) WHERE pinned = TRUE AND deleted_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_memories_project_category ON memories (project_id, category)",
+    "CREATE INDEX IF NOT EXISTS idx_memories_project_active ON memories (project_id) WHERE deleted_at IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_memories_project_pinned ON memories (project_id, pinned) WHERE pinned = TRUE AND deleted_at IS NULL",
 ]
 
 
@@ -93,7 +137,7 @@ def _row_to_dict(row: asyncpg.Record) -> dict:
 
 
 async def save_memory(
-    user_id: str,
+    project_id: str,
     content: str,
     category: str,
     tags: list[str],
@@ -102,11 +146,11 @@ async def save_memory(
     async with _pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO memories (user_id, content, category, tags, embedding)
+            INSERT INTO memories (project_id, content, category, tags, embedding)
             VALUES ($1, $2, $3, $4, $5)
-            RETURNING id, user_id, content, category, tags, pinned, created_at, updated_at
+            RETURNING id, project_id, content, category, tags, pinned, created_at, updated_at
             """,
-            user_id,
+            project_id,
             content,
             category,
             tags,
@@ -119,7 +163,7 @@ async def get_memory(memory_id: str) -> dict | None:
     async with _pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT id, user_id, content, category, tags, pinned, created_at, updated_at, deleted_at
+            SELECT id, project_id, content, category, tags, pinned, created_at, updated_at, deleted_at
             FROM memories WHERE id = $1
             """,
             uuid.UUID(memory_id),
@@ -153,7 +197,7 @@ async def update_memory(
             UPDATE memories
             SET content = $1, category = $2, tags = $3, embedding = $4, updated_at = $5
             WHERE id = $6 AND deleted_at IS NULL
-            RETURNING id, user_id, content, category, tags, pinned, created_at, updated_at
+            RETURNING id, project_id, content, category, tags, pinned, created_at, updated_at
             """,
             new_content,
             new_category,
@@ -175,19 +219,19 @@ async def delete_memory(memory_id: str) -> bool:
 
 
 async def list_memories(
-    user_id: str = "",
+    project_id: str = "",
     category: str = "",
     tags: list[str] | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    query = "SELECT id, user_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
+    query = "SELECT id, project_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
     params: list = []
     idx = 1
 
-    if user_id:
-        query += f" AND user_id = ${idx}"
-        params.append(user_id)
+    if project_id:
+        query += f" AND project_id = ${idx}"
+        params.append(project_id)
         idx += 1
 
     if category:
@@ -209,17 +253,17 @@ async def list_memories(
 
 
 async def search_memories(
-    user_id: str = "",
+    project_id: str = "",
     query_text: str = "",
     query_embedding: list[float] | None = None,
     category: str = "",
     tags: list[str] | None = None,
     limit: int = 20,
 ) -> list[dict]:
-    user_filter = f"AND user_id = $2" if user_id else ""
+    project_filter = "AND project_id = $2" if project_id else ""
     params: list = [query_text]
-    if user_id:
-        params.append(user_id)
+    if project_id:
+        params.append(project_id)
     embed_idx = len(params) + 1
     params.append(query_embedding)
     limit_idx = len(params) + 1
@@ -242,7 +286,7 @@ async def search_memories(
                ts_rank(to_tsvector('english', content), plainto_tsquery('english', $1)) AS text_rank
         FROM memories
         WHERE deleted_at IS NULL
-          {user_filter}
+          {project_filter}
           AND to_tsvector('english', content) @@ plainto_tsquery('english', $1)
     ),
     sem AS (
@@ -250,15 +294,15 @@ async def search_memories(
                1 - (embedding <=> ${embed_idx}::vector) AS cosine_sim
         FROM memories
         WHERE deleted_at IS NULL
-          {user_filter}
+          {project_filter}
     )
-    SELECT m.id, m.user_id, m.content, m.category, m.tags, m.created_at, m.updated_at,
+    SELECT m.id, m.project_id, m.content, m.category, m.tags, m.created_at, m.updated_at,
            COALESCE(f.text_rank, 0) * 0.4 + COALESCE(s.cosine_sim, 0) * 0.6 AS score
     FROM memories m
     LEFT JOIN fts f ON m.id = f.id
     LEFT JOIN sem s ON m.id = s.id
     WHERE m.deleted_at IS NULL
-      {user_filter}
+      {project_filter}
       AND (f.id IS NOT NULL OR COALESCE(s.cosine_sim, 0) > 0.3)
       {extra_filters}
     ORDER BY score DESC
@@ -278,18 +322,18 @@ async def search_memories(
 # --- Stats functions ---
 
 
-async def get_user_stats() -> list[dict]:
+async def get_project_stats() -> list[dict]:
     async with _pool.acquire() as conn:
         rows = await conn.fetch(
             """
-            SELECT user_id,
+            SELECT project_id,
                    COUNT(*) FILTER (WHERE deleted_at IS NULL) AS count,
                    COUNT(DISTINCT category) FILTER (WHERE deleted_at IS NULL) AS category_count,
                    COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) AS archived_count,
                    MAX(updated_at) AS latest_at
             FROM memories
-            GROUP BY user_id
-            ORDER BY user_id
+            GROUP BY project_id
+            ORDER BY project_id
             """
         )
     results = []
@@ -301,10 +345,10 @@ async def get_user_stats() -> list[dict]:
     return results
 
 
-async def get_categories(user_id: str = "") -> list[str]:
-    if user_id:
-        query = "SELECT DISTINCT category FROM memories WHERE user_id = $1 AND deleted_at IS NULL ORDER BY category"
-        params = [user_id]
+async def get_categories(project_id: str = "") -> list[str]:
+    if project_id:
+        query = "SELECT DISTINCT category FROM memories WHERE project_id = $1 AND deleted_at IS NULL ORDER BY category"
+        params = [project_id]
     else:
         query = "SELECT DISTINCT category FROM memories WHERE deleted_at IS NULL ORDER BY category"
         params = []
@@ -313,45 +357,45 @@ async def get_categories(user_id: str = "") -> list[str]:
     return [r["category"] for r in rows]
 
 
-async def get_categories_with_counts(user_id: str = "") -> list[dict]:
+async def get_categories_with_counts(project_id: str = "") -> list[dict]:
     query = """
-        SELECT user_id, category, COUNT(*) AS count
+        SELECT project_id, category, COUNT(*) AS count
         FROM memories
         WHERE deleted_at IS NULL
     """
     params = []
-    if user_id:
-        query += " AND user_id = $1"
-        params.append(user_id)
-    query += " GROUP BY user_id, category ORDER BY user_id, count DESC"
+    if project_id:
+        query += " AND project_id = $1"
+        params.append(project_id)
+    query += " GROUP BY project_id, category ORDER BY project_id, count DESC"
     async with _pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
     return [dict(r) for r in rows]
 
 
-async def get_tags_with_counts(user_id: str = "") -> list[dict]:
+async def get_tags_with_counts(project_id: str = "") -> list[dict]:
     query = """
-        SELECT user_id, tag, COUNT(*) AS count
+        SELECT project_id, tag, COUNT(*) AS count
         FROM memories, UNNEST(tags) AS tag
         WHERE deleted_at IS NULL
     """
     params = []
-    if user_id:
-        query += " AND user_id = $1"
-        params.append(user_id)
-    query += " GROUP BY user_id, tag ORDER BY user_id, count DESC"
+    if project_id:
+        query += " AND project_id = $1"
+        params.append(project_id)
+    query += " GROUP BY project_id, tag ORDER BY project_id, count DESC"
     async with _pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
     return [dict(r) for r in rows]
 
 
-async def count_memories(user_id: str = "", category: str = "") -> int:
+async def count_memories(project_id: str = "", category: str = "") -> int:
     query = "SELECT COUNT(*) FROM memories WHERE deleted_at IS NULL"
     params: list = []
     idx = 1
-    if user_id:
-        query += f" AND user_id = ${idx}"
-        params.append(user_id)
+    if project_id:
+        query += f" AND project_id = ${idx}"
+        params.append(project_id)
         idx += 1
     if category:
         query += f" AND category = ${idx}"
@@ -361,10 +405,10 @@ async def count_memories(user_id: str = "", category: str = "") -> int:
         return await conn.fetchval(query, *params)
 
 
-async def count_archived(user_id: str = "") -> int:
-    if user_id:
-        query = "SELECT COUNT(*) FROM memories WHERE user_id = $1 AND deleted_at IS NOT NULL"
-        params = [user_id]
+async def count_archived(project_id: str = "") -> int:
+    if project_id:
+        query = "SELECT COUNT(*) FROM memories WHERE project_id = $1 AND deleted_at IS NOT NULL"
+        params = [project_id]
     else:
         query = "SELECT COUNT(*) FROM memories WHERE deleted_at IS NOT NULL"
         params = []
@@ -397,20 +441,20 @@ async def unpin_memory(memory_id: str) -> bool:
 
 
 async def get_related_memories(
-    memory_id: str, user_id: str = "", limit: int = 5
+    memory_id: str, project_id: str = "", limit: int = 5
 ) -> list[dict]:
-    user_filter = "AND user_id = $2" if user_id else ""
+    project_filter = "AND project_id = $2" if project_id else ""
     params: list = [uuid.UUID(memory_id)]
-    if user_id:
-        params.append(user_id)
+    if project_id:
+        params.append(project_id)
     limit_idx = len(params) + 1
     params.append(limit)
 
     sql = f"""
-    SELECT id, user_id, content, category, tags, pinned, updated_at,
+    SELECT id, project_id, content, category, tags, pinned, updated_at,
            1 - (embedding <=> (SELECT embedding FROM memories WHERE id = $1)) AS similarity
     FROM memories
-    WHERE id != $1 AND deleted_at IS NULL {user_filter}
+    WHERE id != $1 AND deleted_at IS NULL {project_filter}
     ORDER BY embedding <=> (SELECT embedding FROM memories WHERE id = $1)
     LIMIT ${limit_idx}
     """
@@ -427,12 +471,12 @@ async def get_related_memories(
 # --- Export ---
 
 
-async def export_memories(user_id: str = "") -> list[dict]:
-    query = "SELECT id, user_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
+async def export_memories(project_id: str = "") -> list[dict]:
+    query = "SELECT id, project_id, content, category, tags, pinned, created_at, updated_at FROM memories WHERE deleted_at IS NULL"
     params = []
-    if user_id:
-        query += " AND user_id = $1"
-        params.append(user_id)
+    if project_id:
+        query += " AND project_id = $1"
+        params.append(project_id)
     query += " ORDER BY pinned DESC, updated_at DESC"
     async with _pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
@@ -443,16 +487,16 @@ async def export_memories(user_id: str = "") -> list[dict]:
 
 
 async def list_archived(
-    user_id: str = "",
+    project_id: str = "",
     limit: int = 50,
     offset: int = 0,
 ) -> list[dict]:
-    query = "SELECT id, user_id, content, category, tags, created_at, updated_at, deleted_at FROM memories WHERE deleted_at IS NOT NULL"
+    query = "SELECT id, project_id, content, category, tags, created_at, updated_at, deleted_at FROM memories WHERE deleted_at IS NOT NULL"
     params: list = []
     idx = 1
-    if user_id:
-        query += f" AND user_id = ${idx}"
-        params.append(user_id)
+    if project_id:
+        query += f" AND project_id = ${idx}"
+        params.append(project_id)
         idx += 1
     query += f" ORDER BY deleted_at DESC LIMIT ${idx} OFFSET ${idx + 1}"
     params.extend([limit, offset])

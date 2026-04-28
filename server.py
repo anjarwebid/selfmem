@@ -68,28 +68,31 @@ PAGE_SIZE = 20
 @mcp.tool()
 async def save_memory(
     content: str,
-    user_id: str,
+    project_id: str,
     tags: list[str] | None = None,
     category: str = "general",
 ) -> str:
-    """Save a memory. Content is auto-embedded for semantic search."""
+    """Save a memory to a project namespace. Content is auto-embedded for semantic search.
+
+    project_id is the namespace that scopes memories (e.g. a Linux user, a project name).
+    """
     embedding = embeddings.get_embedding(content)
-    result = await db.save_memory(user_id, content, category, tags or [], embedding)
+    result = await db.save_memory(project_id, content, category, tags or [], embedding)
     return json.dumps(result, indent=2)
 
 
 @mcp.tool()
 async def search_memory(
     query: str,
-    user_id: str,
+    project_id: str,
     tags: list[str] | None = None,
     category: str = "",
     limit: int = 20,
 ) -> str:
-    """Search memories using hybrid full-text + semantic search."""
+    """Search memories in a project namespace using hybrid full-text + semantic search."""
     query_embedding = embeddings.get_embedding(query)
     results = await db.search_memories(
-        user_id, query, query_embedding, category, tags, limit
+        project_id, query, query_embedding, category, tags, limit
     )
     if not results:
         return "No memories found."
@@ -98,13 +101,13 @@ async def search_memory(
 
 @mcp.tool()
 async def list_memories(
-    user_id: str,
+    project_id: str,
     category: str = "",
     tags: list[str] | None = None,
     limit: int = 50,
 ) -> str:
-    """List memories for a user, optionally filtered by category or tags."""
-    results = await db.list_memories(user_id, category, tags, limit)
+    """List memories for a project, optionally filtered by category or tags."""
+    results = await db.list_memories(project_id, category, tags, limit)
     if not results:
         return "No memories found."
     return json.dumps(results, indent=2)
@@ -149,12 +152,11 @@ async def delete_memory(id: str) -> str:
     return f"Archived: {id}"
 
 
-# Mount MCP at /mcp
 # --- REST API ---
 
 
 class MemoryCreate(BaseModel):
-    user_id: str
+    project_id: str
     content: str
     category: str = "general"
     tags: list[str] = []
@@ -175,14 +177,14 @@ async def health():
 async def api_save_memory(body: MemoryCreate):
     embedding = embeddings.get_embedding(body.content)
     result = await db.save_memory(
-        body.user_id, body.content, body.category, body.tags, embedding
+        body.project_id, body.content, body.category, body.tags, embedding
     )
     return JSONResponse(result, status_code=201)
 
 
 @app.get("/api/v1/memories")
 async def api_list_or_search_memories(
-    user_id: str = Query(...),
+    project_id: str = Query(...),
     query: str = Query(""),
     category: str = Query(""),
     tags: list[str] = Query([]),
@@ -192,11 +194,11 @@ async def api_list_or_search_memories(
     if query:
         query_embedding = embeddings.get_embedding(query)
         results = await db.search_memories(
-            user_id, query, query_embedding, category, tags or None, limit
+            project_id, query, query_embedding, category, tags or None, limit
         )
     else:
         results = await db.list_memories(
-            user_id, category, tags or None, limit, offset
+            project_id, category, tags or None, limit, offset
         )
     return {"items": results, "total": len(results)}
 
@@ -239,11 +241,11 @@ async def api_delete_memory(memory_id: str):
 
 @app.get("/api/v1/archive")
 async def api_list_archived(
-    user_id: str = Query(...),
+    project_id: str = Query(...),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
 ):
-    results = await db.list_archived(user_id, limit, offset)
+    results = await db.list_archived(project_id, limit, offset)
     return {"items": results, "total": len(results)}
 
 
@@ -289,14 +291,14 @@ async def api_unpin_memory(memory_id: str):
 
 
 @app.get("/api/v1/export")
-async def api_export(user_id: str = Query("")):
-    memories = await db.export_memories(user_id)
+async def api_export(project_id: str = Query("")):
+    memories = await db.export_memories(project_id)
     # Strip internal fields for clean export
     export_data = []
     for m in memories:
         export_data.append({
             "content": m["content"],
-            "user_id": m["user_id"],
+            "project_id": m["project_id"],
             "category": m["category"],
             "tags": m["tags"],
             "pinned": m.get("pinned", False),
@@ -308,7 +310,7 @@ async def api_export(user_id: str = Query("")):
     return StreamingResponse(
         io.BytesIO(content.encode()),
         media_type="application/json",
-        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{user_id or 'all'}.json"},
+        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{project_id or 'all'}.json"},
     )
 
 
@@ -326,13 +328,13 @@ async def api_import(request: Request):
     imported = 0
     for item in data:
         content = item.get("content", "").strip()
-        user_id = item.get("user_id", "").strip()
-        if not content or not user_id:
+        project_id = item.get("project_id", "").strip()
+        if not content or not project_id:
             continue
         category = item.get("category", "general")
         tags = item.get("tags", [])
         embedding = embeddings.get_embedding(content)
-        await db.save_memory(user_id, content, category, tags, embedding)
+        await db.save_memory(project_id, content, category, tags, embedding)
         imported += 1
 
     return {"status": "ok", "imported": imported, "total": len(data)}
@@ -341,29 +343,29 @@ async def api_import(request: Request):
 # --- UI Routes ---
 
 
-async def _get_current_user(request: Request) -> str:
-    user = request.cookies.get("selfmem_user", "")
-    if user == "":
-        # Check if explicitly set to "" (All Users) vs never set
-        if "selfmem_user" in request.cookies:
+async def _get_current_project(request: Request) -> str:
+    project = request.cookies.get("selfmem_project", "")
+    if project == "":
+        # Check if explicitly set to "" (All Projects) vs never set
+        if "selfmem_project" in request.cookies:
             return "__all__"
-        stats = await db.get_user_stats()
-        user = stats[0]["user_id"] if stats else "default"
-    return user
+        stats = await db.get_project_stats()
+        project = stats[0]["project_id"] if stats else "default"
+    return project
 
 
-def _resolve_user(current_user: str) -> str:
-    """Convert UI user to DB user_id. __all__ -> empty string for db queries."""
-    return "" if current_user == "__all__" else current_user
+def _resolve_project(current_project: str) -> str:
+    """Convert UI project to DB project_id. __all__ -> empty string for db queries."""
+    return "" if current_project == "__all__" else current_project
 
 
 async def _base_context(request: Request, active_page: str) -> dict:
-    users = await db.get_user_stats()
-    current_user = await _get_current_user(request)
+    projects = await db.get_project_stats()
+    current_project = await _get_current_project(request)
     return {
         "request": request,
-        "users": users,
-        "current_user": current_user,
+        "projects": projects,
+        "current_project": current_project,
         "active_page": active_page,
     }
 
@@ -396,39 +398,39 @@ async def ui_login_post(request: Request, api_key: str = Form(...)):
 async def ui_logout():
     response = RedirectResponse("/ui/login", status_code=302)
     response.delete_cookie("selfmem_session")
-    response.delete_cookie("selfmem_user")
+    response.delete_cookie("selfmem_project")
     return response
 
 
-@app.post("/ui/set-user")
-async def ui_set_user(request: Request):
+@app.post("/ui/set-project")
+async def ui_set_project(request: Request):
     form = await request.form()
-    user_id = form.get("user_id", "")
+    project_id = form.get("project_id", "")
     response = HTMLResponse("")
-    response.set_cookie("selfmem_user", user_id, max_age=config.SESSION_MAX_AGE)
+    response.set_cookie("selfmem_project", project_id, max_age=config.SESSION_MAX_AGE)
     return response
 
 
 @app.get("/ui/", response_class=HTMLResponse)
 async def ui_dashboard(request: Request):
     ctx = await _base_context(request, "dashboard")
-    db_user = _resolve_user(ctx["current_user"])
-    mem_count = await db.count_memories(db_user)
-    categories = await db.get_categories(db_user)
-    archived = await db.count_archived(db_user) if db_user else 0
-    # Find latest from user stats
+    db_project = _resolve_project(ctx["current_project"])
+    mem_count = await db.count_memories(db_project)
+    categories = await db.get_categories(db_project)
+    archived = await db.count_archived(db_project) if db_project else 0
+    # Find latest from project stats
     latest = ""
-    for u in ctx["users"]:
-        if (not db_user or u["user_id"] == db_user) and u.get("latest_at"):
-            if not latest or u["latest_at"] > latest:
-                latest = u["latest_at"]
+    for p in ctx["projects"]:
+        if (not db_project or p["project_id"] == db_project) and p.get("latest_at"):
+            if not latest or p["latest_at"] > latest:
+                latest = p["latest_at"]
     ctx["stats"] = {
         "memories": mem_count,
         "categories": len(categories),
         "archived": archived,
         "latest": latest if latest else "",
     }
-    ctx["memories"] = await db.list_memories(db_user, limit=10)
+    ctx["memories"] = await db.list_memories(db_project, limit=10)
     return _render(request, "dashboard.html", ctx)
 
 
@@ -439,14 +441,14 @@ async def ui_memories(
     filter_tag: str = Query(""),
 ):
     ctx = await _base_context(request, "memories")
-    db_user = _resolve_user(ctx["current_user"])
-    ctx["categories"] = await db.get_categories(db_user)
+    db_project = _resolve_project(ctx["current_project"])
+    ctx["categories"] = await db.get_categories(db_project)
     ctx["filter_category"] = filter_category
     ctx["filter_tag"] = filter_tag
 
     tags_filter = [filter_tag] if filter_tag else None
-    ctx["total"] = await db.count_memories(db_user, filter_category)
-    memories = await db.list_memories(db_user, category=filter_category, tags=tags_filter, limit=PAGE_SIZE)
+    ctx["total"] = await db.count_memories(db_project, filter_category)
+    memories = await db.list_memories(db_project, category=filter_category, tags=tags_filter, limit=PAGE_SIZE)
     total_pages = max(1, math.ceil(ctx["total"] / PAGE_SIZE))
     ctx["memories"] = memories
     ctx["page"] = 1
@@ -457,30 +459,30 @@ async def ui_memories(
 @app.get("/ui/partials/memories", response_class=HTMLResponse)
 async def ui_partials_memories(
     request: Request,
-    user_id: str = Query(""),
+    project_id: str = Query(""),
     query: str = Query(""),
     category: str = Query(""),
     page: int = Query(1),
 ):
-    raw_user = user_id or await _get_current_user(request)
-    db_user = _resolve_user(raw_user)
+    raw_project = project_id or await _get_current_project(request)
+    db_project = _resolve_project(raw_project)
     offset = (page - 1) * PAGE_SIZE
 
     if query:
         query_embedding = embeddings.get_embedding(query)
-        memories = await db.search_memories(db_user, query, query_embedding, category, limit=PAGE_SIZE)
+        memories = await db.search_memories(db_project, query, query_embedding, category, limit=PAGE_SIZE)
         total = len(memories)
         total_pages = 1
     else:
-        total = await db.count_memories(db_user, category)
+        total = await db.count_memories(db_project, category)
         total_pages = max(1, math.ceil(total / PAGE_SIZE))
-        memories = await db.list_memories(db_user, category=category, limit=PAGE_SIZE, offset=offset)
+        memories = await db.list_memories(db_project, category=category, limit=PAGE_SIZE, offset=offset)
 
     return _render(request, "partials/memory_list.html", {
         "memories": memories,
         "page": page,
         "total_pages": total_pages,
-        "current_user": raw_user,
+        "current_project": raw_project,
     })
 
 
@@ -499,25 +501,25 @@ async def ui_partials_memory_edit(request: Request, memory_id: str):
 @app.post("/ui/memories", response_class=HTMLResponse)
 async def ui_create_memory(request: Request):
     form = await request.form()
-    user_id = form.get("user_id", "")
+    project_id = form.get("project_id", "")
     content = form.get("content", "")
     category = form.get("category", "") or "general"
     tags_str = form.get("tags", "")
     tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else []
 
     embedding = embeddings.get_embedding(content)
-    await db.save_memory(user_id, content, category, tags, embedding)
+    await db.save_memory(project_id, content, category, tags, embedding)
 
     # Re-render the full list
-    memories = await db.list_memories(user_id, limit=PAGE_SIZE)
-    total = await db.count_memories(user_id)
+    memories = await db.list_memories(project_id, limit=PAGE_SIZE)
+    total = await db.count_memories(project_id)
     total_pages = max(1, math.ceil(total / PAGE_SIZE))
 
     response = _render(request, "partials/memory_list.html", {
         "memories": memories,
         "page": 1,
         "total_pages": total_pages,
-        "current_user": user_id,
+        "current_project": project_id,
     })
     response.headers.update(_toast_headers("Memory saved"))
     return response
@@ -555,8 +557,8 @@ async def ui_delete_memory(request: Request, memory_id: str):
 async def ui_pin_memory(request: Request, memory_id: str):
     await db.pin_memory(memory_id)
     mem = await db.get_memory(memory_id)
-    raw_user = await _get_current_user(request)
-    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_user": raw_user})
+    raw_project = await _get_current_project(request)
+    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_project": raw_project})
     response.headers.update(_toast_headers("Memory pinned"))
     return response
 
@@ -565,8 +567,8 @@ async def ui_pin_memory(request: Request, memory_id: str):
 async def ui_unpin_memory(request: Request, memory_id: str):
     await db.unpin_memory(memory_id)
     mem = await db.get_memory(memory_id)
-    raw_user = await _get_current_user(request)
-    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_user": raw_user})
+    raw_project = await _get_current_project(request)
+    response = _render(request, "partials/memory_row.html", {"mem": mem, "current_project": raw_project})
     response.headers.update(_toast_headers("Memory unpinned"))
     return response
 
@@ -574,8 +576,8 @@ async def ui_unpin_memory(request: Request, memory_id: str):
 @app.get("/ui/partials/memory/{memory_id}/related", response_class=HTMLResponse)
 async def ui_related_memories(request: Request, memory_id: str):
     mem = await db.get_memory(memory_id)
-    user_id = mem["user_id"] if mem else ""
-    related = await db.get_related_memories(memory_id, user_id, limit=5)
+    project_id = mem["project_id"] if mem else ""
+    related = await db.get_related_memories(memory_id, project_id, limit=5)
     return _render(request, "partials/related_list.html", {"memories": related, "source_id": memory_id})
 
 
@@ -584,14 +586,14 @@ async def ui_related_memories(request: Request, memory_id: str):
 
 @app.get("/ui/export", response_class=HTMLResponse)
 async def ui_export(request: Request):
-    raw_user = await _get_current_user(request)
-    db_user = _resolve_user(raw_user)
-    memories = await db.export_memories(db_user)
+    raw_project = await _get_current_project(request)
+    db_project = _resolve_project(raw_project)
+    memories = await db.export_memories(db_project)
     export_data = []
     for m in memories:
         export_data.append({
             "content": m["content"],
-            "user_id": m["user_id"],
+            "project_id": m["project_id"],
             "category": m["category"],
             "tags": m["tags"],
             "pinned": m.get("pinned", False),
@@ -603,7 +605,7 @@ async def ui_export(request: Request):
     return StreamingResponse(
         io.BytesIO(content.encode()),
         media_type="application/json",
-        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{db_user or 'all'}.json"},
+        headers={"Content-Disposition": f"attachment; filename=selfmem-export-{db_project or 'all'}.json"},
     )
 
 
@@ -632,11 +634,11 @@ async def ui_import(request: Request):
     imported = 0
     for item in data:
         c = item.get("content", "").strip()
-        uid = item.get("user_id", "").strip()
-        if not c or not uid:
+        pid = item.get("project_id", "").strip()
+        if not c or not pid:
             continue
         embedding = embeddings.get_embedding(c)
-        await db.save_memory(uid, c, item.get("category", "general"), item.get("tags", []), embedding)
+        await db.save_memory(pid, c, item.get("category", "general"), item.get("tags", []), embedding)
         imported += 1
 
     response = HTMLResponse(f"<div class='text-emerald-400 text-sm'>{imported} memories imported</div>")
@@ -650,17 +652,17 @@ async def ui_import(request: Request):
 @app.get("/ui/tags", response_class=HTMLResponse)
 async def ui_tags(request: Request):
     ctx = await _base_context(request, "tags")
-    db_user = _resolve_user(ctx["current_user"])
-    rows = await db.get_tags_with_counts(db_user)
+    db_project = _resolve_project(ctx["current_project"])
+    rows = await db.get_tags_with_counts(db_project)
 
-    tags_by_user: dict[str, list] = {}
+    tags_by_project: dict[str, list] = {}
     for row in rows:
-        uid = row["user_id"]
-        if uid not in tags_by_user:
-            tags_by_user[uid] = []
-        tags_by_user[uid].append(row)
+        pid = row["project_id"]
+        if pid not in tags_by_project:
+            tags_by_project[pid] = []
+        tags_by_project[pid].append(row)
 
-    ctx["tags_by_user"] = tags_by_user
+    ctx["tags_by_project"] = tags_by_project
     return _render(request, "tags.html", ctx)
 
 
@@ -670,18 +672,17 @@ async def ui_tags(request: Request):
 @app.get("/ui/categories", response_class=HTMLResponse)
 async def ui_categories(request: Request):
     ctx = await _base_context(request, "categories")
-    db_user = _resolve_user(ctx["current_user"])
-    rows = await db.get_categories_with_counts(db_user)
+    db_project = _resolve_project(ctx["current_project"])
+    rows = await db.get_categories_with_counts(db_project)
 
-    # Group by user_id
-    categories_by_user: dict[str, list] = {}
+    categories_by_project: dict[str, list] = {}
     for row in rows:
-        uid = row["user_id"]
-        if uid not in categories_by_user:
-            categories_by_user[uid] = []
-        categories_by_user[uid].append(row)
+        pid = row["project_id"]
+        if pid not in categories_by_project:
+            categories_by_project[pid] = []
+        categories_by_project[pid].append(row)
 
-    ctx["categories_by_user"] = categories_by_user
+    ctx["categories_by_project"] = categories_by_project
     return _render(request, "categories.html", ctx)
 
 
@@ -691,17 +692,17 @@ async def ui_categories(request: Request):
 @app.get("/ui/archive", response_class=HTMLResponse)
 async def ui_archive(request: Request):
     ctx = await _base_context(request, "archive")
-    db_user = _resolve_user(ctx["current_user"])
-    ctx["memories"] = await db.list_archived(db_user)
+    db_project = _resolve_project(ctx["current_project"])
+    ctx["memories"] = await db.list_archived(db_project)
     return _render(request, "archive.html", ctx)
 
 
 @app.get("/ui/partials/archive", response_class=HTMLResponse)
 async def ui_partials_archive(request: Request):
-    raw_user = await _get_current_user(request)
-    db_user = _resolve_user(raw_user)
-    memories = await db.list_archived(db_user)
-    return _render(request, "partials/archive_list.html", {"memories": memories, "current_user": raw_user})
+    raw_project = await _get_current_project(request)
+    db_project = _resolve_project(raw_project)
+    memories = await db.list_archived(db_project)
+    return _render(request, "partials/archive_list.html", {"memories": memories, "current_project": raw_project})
 
 
 @app.post("/ui/archive/{memory_id}/restore", response_class=HTMLResponse)
@@ -728,7 +729,7 @@ async def ui_settings(request: Request):
     ctx = await _base_context(request, "settings")
     # Check DB connectivity
     try:
-        await db.count_memories(ctx["current_user"])
+        await db.count_memories(ctx["current_project"])
         db_ok = True
     except Exception:
         db_ok = False

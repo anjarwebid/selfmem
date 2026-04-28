@@ -11,8 +11,8 @@
     <a href="/ui/memories#memory-{{ mem.id }}" class="block bg-surface-900 border border-white/[0.03] rounded-lg p-3 hover:border-accent/15 hover:bg-surface-800 transition-all group">
         <div class="flex items-center gap-2 mb-1.5">
             <span class="badge-cyan text-[10px] px-2 py-0.5 rounded-md font-mono">{{ mem.category }}</span>
-            {% if mem.user_id %}
-            <span class="badge-ghost text-[10px] px-1.5 py-0.5 rounded-md font-mono">{{ mem.user_id }}</span>
+            {% if mem.project_id %}
+            <span class="badge-ghost text-[10px] px-1.5 py-0.5 rounded-md font-mono">{{ mem.project_id }}</span>
             {% endif %}
             <span class="text-[10px] font-mono text-cyan-700 ml-auto">{{ "%.1f"|format(mem.similarity * 100) }}%</span>
         </div>

@@ -7,8 +7,8 @@
                     <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
                 </span>
                 {% endif %}
-                {% if mem.user_id and current_user is defined and current_user == '__all__' %}
-                <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ mem.user_id }}</span>
+                {% if mem.project_id and current_project is defined and current_project == '__all__' %}
+                <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ mem.project_id }}</span>
                 {% endif %}
                 <span class="badge-cyan text-[11px] px-2.5 py-0.5 rounded-md font-mono">{{ mem.category }}</span>
                 {% for tag in mem.tags %}

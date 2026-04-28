@@ -3,19 +3,19 @@
 {% block content %}
 <div class="mb-8">
     <h2 class="text-2xl font-semibold text-white">Categories</h2>
-    <p class="text-sm text-gray-600 mt-1">Memory categories {% if current_user != '__all__' %}for <span class="text-gray-400 font-mono">{{ current_user }}</span>{% else %}across <span class="text-gray-400">all users</span>{% endif %}</p>
+    <p class="text-sm text-gray-600 mt-1">Memory categories {% if current_project != '__all__' %}for <span class="text-gray-400 font-mono">{{ current_project }}</span>{% else %}across <span class="text-gray-400">all projects</span>{% endif %}</p>
 </div>
 
-{% if categories_by_user %}
+{% if categories_by_project %}
 <div class="space-y-6 stagger">
-    {% for user_id, cats in categories_by_user.items() %}
+    {% for project_id, cats in categories_by_project.items() %}
     <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6">
         <div class="flex items-center gap-3 mb-5">
             <div class="w-7 h-7 rounded-lg bg-surface-700 flex items-center justify-center">
                 <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
             </div>
             <div>
-                <h3 class="text-sm font-medium text-white font-mono">{{ user_id }}</h3>
+                <h3 class="text-sm font-medium text-white font-mono">{{ project_id }}</h3>
                 <p class="text-[11px] text-gray-600">{{ cats|length }} categories</p>
             </div>
         </div>

@@ -6,7 +6,7 @@ SelfMem provides a unified memory layer accessible via MCP (Model Context Protoc
 
 ## Why SelfMem?
 
-Existing solutions like OpenMemory scope memories per MCP client session (app-level ACL), making memories created by one client invisible to another. SelfMem fixes this by routing memories by `user_id` — any client with a valid API key sees the same memories for the same user.
+Existing solutions like OpenMemory scope memories per MCP client session (app-level ACL), making memories created by one client invisible to another. SelfMem fixes this by routing memories by `project_id` — any client with a valid API key sees the same memories for the same project namespace.
 
 ## Features
 
@@ -17,7 +17,7 @@ Existing solutions like OpenMemory scope memories per MCP client session (app-le
 - **Local embeddings** — `sentence-transformers/all-MiniLM-L6-v2` runs inside the container, no OpenAI dependency
 - **API key auth** — Single `X-API-Key` header protects all endpoints (MCP, REST, UI)
 - **Soft-delete with archive** — Deleted memories are archived, restorable, and purgeable separately
-- **Multi-user** — `user_id` is a parameter, not derived from client session
+- **Multi-project** — `project_id` is a parameter, not derived from client session. (Future: real authenticated users that own multiple projects.)
 - **Single container** — One Docker Compose stack: PostgreSQL + pgvector + SelfMem app
 
 ## Quick Start
@@ -70,7 +70,7 @@ claude mcp add selfmem \
 | `update_memory` | Update content, tags, or category (re-embeds on content change) |
 | `delete_memory` | Soft-delete (archive) a memory |
 
-All tools accept `user_id` as a parameter.
+All tools accept `project_id` as a parameter (the namespace that scopes memories — e.g. a Linux user, a project name).
 
 ## REST API
 
@@ -81,7 +81,7 @@ All endpoints require `X-API-Key` header (except `/health`).
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/v1/memories` | Create a memory |
-| `GET` | `/api/v1/memories?user_id=...` | List or search (add `&query=...` for search) |
+| `GET` | `/api/v1/memories?project_id=...` | List or search (add `&query=...` for search) |
 | `GET` | `/api/v1/memories/{id}` | Get by ID |
 | `PUT` | `/api/v1/memories/{id}` | Update |
 | `DELETE` | `/api/v1/memories/{id}` | Soft-delete (archive) |
@@ -90,7 +90,7 @@ All endpoints require `X-API-Key` header (except `/health`).
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/v1/archive?user_id=...` | List archived memories |
+| `GET` | `/api/v1/archive?project_id=...` | List archived memories |
 | `POST` | `/api/v1/archive/{id}/restore` | Restore from archive |
 | `DELETE` | `/api/v1/archive/{id}` | Permanently delete (purge) |
 
@@ -101,12 +101,12 @@ API_KEY="your-key"
 
 # Save a memory
 curl -X POST -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"user_id":"slvr","content":"PostgreSQL uses MVCC for concurrency","category":"technical","tags":["postgres","database"]}' \
+  -d '{"project_id":"slvr","content":"PostgreSQL uses MVCC for concurrency","category":"technical","tags":["postgres","database"]}' \
   http://localhost:8818/api/v1/memories
 
 # Search
 curl -H "X-API-Key: $API_KEY" \
-  "http://localhost:8818/api/v1/memories?user_id=slvr&query=database+concurrency"
+  "http://localhost:8818/api/v1/memories?project_id=slvr&query=database+concurrency"
 
 # Delete (soft)
 curl -X DELETE -H "X-API-Key: $API_KEY" \
@@ -124,8 +124,8 @@ Dark-themed management interface at `/ui/`:
 - **Dashboard** — Stats overview, quick search, recent memories
 - **Memories** — Search, filter by category, add/edit/delete with HTMX (no page reloads)
 - **Archive** — View soft-deleted memories, restore or purge
-- **Settings** — Server info, DB status, API key (masked), user list
-- **User switcher** — Switch between users from the sidebar
+- **Settings** — Server info, DB status, API key (masked), project list
+- **Project switcher** — Switch between projects from the sidebar
 
 ## Architecture
 

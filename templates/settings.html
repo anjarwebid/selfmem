@@ -61,12 +61,12 @@
     </div>
 
     <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6">
-        <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-5">Users</h3>
+        <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-5">Projects</h3>
         <div class="space-y-3">
-            {% for user in users %}
+            {% for project in projects %}
             <div class="flex justify-between items-center text-sm py-1">
-                <span class="text-gray-300 font-mono text-[13px]">{{ user.user_id }}</span>
-                <span class="text-gray-600 font-mono text-[12px]">{{ user.count }} memories</span>
+                <span class="text-gray-300 font-mono text-[13px]">{{ project.project_id }}</span>
+                <span class="text-gray-600 font-mono text-[12px]">{{ project.count }} memories</span>
             </div>
             {% endfor %}
         </div>
@@ -80,7 +80,7 @@
                 <a href="/ui/export"
                    class="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-700 border border-white/[0.06] rounded-lg text-sm text-gray-300 hover:bg-surface-600 hover:text-white transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    Download JSON ({{ current_user if current_user != '__all__' else 'all users' }})
+                    Download JSON ({{ current_project if current_project != '__all__' else 'all projects' }})
                 </a>
             </div>
             <div>

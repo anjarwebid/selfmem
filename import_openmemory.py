@@ -63,8 +63,10 @@ def import_memory(user_id: str, memory: dict) -> dict | None:
     category = extract_category(categories)
     tags = [c.replace(" ", "-").lower() for c in categories]
 
+    # OpenMemory exposes a "user_id" field; SelfMem now expects "project_id"
+    # for the same scoping concept.
     payload = {
-        "user_id": user_id,
+        "project_id": user_id,
         "content": content,
         "category": category,
         "tags": tags,

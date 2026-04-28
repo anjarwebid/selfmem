@@ -3,7 +3,7 @@
 {% block content %}
 <div class="mb-8">
     <h2 class="text-2xl font-semibold text-white">Dashboard</h2>
-    <p class="text-sm text-gray-600 mt-1">Overview for <span class="text-gray-400 font-mono">{{ current_user }}</span></p>
+    <p class="text-sm text-gray-600 mt-1">Overview for <span class="text-gray-400 font-mono">{{ current_project }}</span></p>
 </div>
 
 <!-- Stats cards -->
@@ -37,7 +37,7 @@
                    hx-trigger="keyup changed delay:300ms"
                    hx-target="#quick-results"
                    hx-include="this"
-                   hx-vals='{"user_id": "{{ current_user if current_user != '__all__' else '' }}"}'
+                   hx-vals='{"project_id": "{{ current_project if current_project != '__all__' else '' }}"}'
                    hx-on::after-request="document.getElementById('quick-results-actions')?.classList.toggle('hidden', !this.value)">
         </div>
     </div>

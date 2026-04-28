@@ -40,17 +40,17 @@
         <div class="glow-line mx-4"></div>
 
         <div class="px-4 py-4">
-            <label class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2 block">Active User</label>
-            <select id="user-switcher"
+            <label class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2 block">Active Project</label>
+            <select id="project-switcher"
                     class="w-full bg-surface-800 border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-accent/30 focus:ring-1 focus:ring-accent/20 transition-all"
-                    hx-post="/ui/set-user"
-                    hx-vals="js:{user_id: event.target.value}"
+                    hx-post="/ui/set-project"
+                    hx-vals="js:{project_id: event.target.value}"
                     hx-swap="none"
                     hx-on::after-request="window.location.reload()">
-                <option value="" {% if current_user == '__all__' %}selected{% endif %}>All Users</option>
-                {% for user in users %}
-                <option value="{{ user.user_id }}" {% if user.user_id == current_user %}selected{% endif %}>
-                    {{ user.user_id }} ({{ user.count }})
+                <option value="" {% if current_project == '__all__' %}selected{% endif %}>All Projects</option>
+                {% for project in projects %}
+                <option value="{{ project.project_id }}" {% if project.project_id == current_project %}selected{% endif %}>
+                    {{ project.project_id }} ({{ project.count }})
                 </option>
                 {% endfor %}
             </select>
