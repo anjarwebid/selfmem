@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -55,9 +56,16 @@ def create_session_token(user_id: str) -> str:
 
 def validate_session_token(token: str) -> str | None:
     try:
-        return get_serializer().loads(token, max_age=config.SESSION_MAX_AGE)
+        payload = get_serializer().loads(token, max_age=config.SESSION_MAX_AGE)
     except (BadSignature, SignatureExpired):
         return None
+    if not isinstance(payload, str):
+        return None
+    try:
+        uuid.UUID(payload)
+    except ValueError:
+        return None
+    return payload
 
 
 def _user_from_row(row: dict) -> User:
