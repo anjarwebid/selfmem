@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
-"""One-shot production migration helper.
+"""Bulk import a backup JSON into a SelfMem instance.
 
-Use after the destructive cutover (SELFMEM_RESET_DATABASE=true) has been
-deployed. Performs in order:
+Verifies the API key's project ACL covers every project_id in the backup,
+then POSTs the file to /api/v1/import. The server preserves `pinned` and
+`created_at` on each row (requires v2.0.0+).
 
-  1. Re-creates the projects listed in the backup file (one per distinct
-     project_id), inside a single org you specify (defaults to your personal).
-     Skips projects that already exist.
-  2. POSTs the backup JSON to /api/v1/import. The server preserves
-     `pinned` and `created_at` on each row (requires v2.0.0+).
-
-Auth: pass the URL, an API key (must already have ACL covering the projects
-you intend to import into — easiest is to create a key after step 1).
+Pre-req: create the projects in the UI and ACL the API key for them.
 
 Usage:
     python migrate_prod.py \

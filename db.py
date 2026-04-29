@@ -176,24 +176,6 @@ INDEX_SQL = [
     "CREATE INDEX IF NOT EXISTS idx_memories_project_pinned ON memories (project_id, pinned) WHERE pinned = TRUE AND deleted_at IS NULL",
 ]
 
-# Tables to drop when SELFMEM_RESET_DATABASE=true. Order respects FKs.
-RESET_TABLES = [
-    "memories",
-    "audit_log",
-    "stripe_events",
-    "org_usage",
-    "api_key_projects",
-    "api_keys",
-    "project_members",
-    "projects",
-    "org_members",
-    "invitations",
-    "password_resets",
-    "orgs",
-    "users",
-]
-
-
 async def _init_conn(conn: asyncpg.Connection) -> None:
     await register_vector(conn)
 
@@ -202,10 +184,6 @@ async def init_db() -> None:
     global _pool
     bootstrap = await asyncpg.connect(config.DATABASE_URL)
     try:
-        if config.RESET_DATABASE:
-            log.warning("SELFMEM_RESET_DATABASE=true — dropping all tables")
-            for t in RESET_TABLES:
-                await bootstrap.execute(f"DROP TABLE IF EXISTS {t} CASCADE")
         await bootstrap.execute(SCHEMA_SQL)
         for idx_sql in INDEX_SQL:
             await bootstrap.execute(idx_sql)

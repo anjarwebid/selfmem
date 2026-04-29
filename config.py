@@ -33,9 +33,6 @@ EMBEDDING_DIM: int = int(os.environ.get("EMBEDDING_DIM", "384"))
 HOST: str = os.environ.get("SELFMEM_HOST", "0.0.0.0")
 PORT: int = int(os.environ.get("SELFMEM_PORT", "8818"))
 
-# --- Destructive flag: drops all tables on boot. Use once per migration. ---
-RESET_DATABASE: bool = os.environ.get("SELFMEM_RESET_DATABASE", "false").lower() == "true"
-
 # --- SMTP (phase 3) ---
 SMTP_HOST: str = os.environ.get("SELFMEM_SMTP_HOST", "")
 SMTP_PORT: int = int(os.environ.get("SELFMEM_SMTP_PORT", "587"))
