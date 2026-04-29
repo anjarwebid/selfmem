@@ -11,6 +11,9 @@
         <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ org.plan_tier }}</span>
     </div>
     <p class="text-sm text-gray-600 font-mono">{{ org.slug }}</p>
+    {% if my_role == 'owner' %}
+    <p class="text-[11px] text-gray-700 mt-2">Name and slug are permanent and cannot be edited.</p>
+    {% endif %}
 </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 stagger">

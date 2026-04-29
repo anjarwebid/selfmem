@@ -723,21 +723,7 @@ async def ui_signup_post(request: Request, email: str = Form(...), password: str
 
     pw_hash = await passwords.hash_password(password)
     user = await db.create_user(email, pw_hash)
-
-    # Create personal org with a slug derived from the email local-part
-    base_slug = _slugify(email.split("@", 1)[0])
-    slug = base_slug
-    n = 2
-    while await db.slug_exists(slug):
-        slug = f"{base_slug}-{n}"
-        n += 1
-    org = await db.create_org(slug=slug, name=f"{email.split('@')[0]}'s projects",
-                              is_personal=True, owner_id=user["id"])
-    audit.log_event(org["id"], "user.signup", actor_user_id=user["id"],
-                    ip_address=_client_ip(request))
-    audit.log_event(org["id"], "org.created", actor_user_id=user["id"],
-                    resource_type="org", resource_id=org["id"])
-    response = RedirectResponse("/ui/", status_code=302)
+    response = RedirectResponse("/ui/orgs/new?first=1", status_code=302)
     response.set_cookie("selfmem_session",
                         create_session_token(user["id"]),
                         httponly=True, max_age=config.SESSION_MAX_AGE)
@@ -805,8 +791,10 @@ async def ui_set_project(request: Request):
 
 @app.get("/ui/", response_class=HTMLResponse)
 async def ui_dashboard(request: Request):
-    ctx = await _base_context(request, "dashboard")
     auth = request.state.auth
+    if not await db.list_user_orgs(auth.user.id):
+        return RedirectResponse("/ui/orgs/new?first=1", status_code=302)
+    ctx = await _base_context(request, "dashboard")
     project_id, project_ids = _resolve_db_scope(ctx["current_project"], auth.allowed_project_ids)
     if project_id:
         scope_ids = [project_id]
@@ -1267,19 +1255,20 @@ async def ui_create_project(request: Request, project_id: str = Form(...), name:
         return _toast_html("Project ID must be lowercase letters/numbers/hyphens (3-100 chars)", error=True)
     if await db.project_id_exists(pid):
         return _toast_html(f"Project '{pid}' already exists", error=True)
-    # Pick the user's personal org as default parent
+    # Pick the user's first owner-org as the default parent. To put a project
+    # in a specific org instead, use the per-org "+ New project" form.
     orgs = await db.list_user_orgs(auth.user.id)
-    personal = next((o for o in orgs if o["is_personal"] and o["role"] == "owner"), None)
-    if not personal:
-        return _toast_html("No personal org found", error=True)
+    owner_org = next((o for o in orgs if o["role"] == "owner"), None)
+    if not owner_org:
+        return _toast_html("Create an org first at /ui/orgs/new", error=True)
     if config.IS_SAAS:
         try:
-            org_full = await db.get_org_by_id(personal["id"])
-            await quotas.check_project_quota(personal["id"], org_full["plan_tier"], org_full["slug"])
+            org_full = await db.get_org_by_id(owner_org["id"])
+            await quotas.check_project_quota(owner_org["id"], org_full["plan_tier"], org_full["slug"])
         except QuotaExceeded:
             return _toast_html("Free tier project limit reached", error=True)
-    await db.create_project(pid, personal["id"], name or pid, auth.user.id)
-    audit.log_event(personal["id"], "project.created",
+    await db.create_project(pid, owner_org["id"], name or pid, auth.user.id)
+    audit.log_event(owner_org["id"], "project.created",
                     actor_user_id=auth.user.id, resource_type="project", resource_id=pid)
     return RedirectResponse("/ui/", status_code=302)
 
@@ -1300,6 +1289,7 @@ async def ui_orgs(request: Request):
 async def ui_org_new(request: Request):
     ctx = await _base_context(request, "orgs")
     ctx["error"] = ""
+    ctx["first"] = request.query_params.get("first") == "1"
     return _render(request, "org_new.html", ctx)
 
 
@@ -1310,6 +1300,7 @@ async def ui_org_new_post(
     name: str = Form(...),
 ):
     ctx = await _base_context(request, "orgs")
+    ctx["first"] = request.query_params.get("first") == "1"
     auth = request.state.auth
     slug = slug.strip().lower()
     if not _is_valid_slug(slug):
@@ -1533,17 +1524,8 @@ async def ui_invite_accept(
         pw_hash = await passwords.hash_password(password)
         user = await db.create_user(email.strip().lower(), pw_hash)
         user_id = user["id"]
-        # Auto personal org
-        base_slug = _slugify(email.split("@", 1)[0])
-        slug = base_slug
-        n = 2
-        while await db.slug_exists(slug):
-            slug = f"{base_slug}-{n}"
-            n += 1
-        personal = await db.create_org(slug=slug, name=f"{email.split('@')[0]}'s projects",
-                                        is_personal=True, owner_id=user_id)
-        audit.log_event(personal["id"], "user.signup",
-                        actor_user_id=user_id, ip_address=_client_ip(request))
+        # Signup via invitation: no personal org. Audit lands on the invited
+        # org via member.joined below.
 
     # Add user to invited org with the invitation's role
     await db.add_org_member(str(inv["org_id"]), user_id, inv["role"])
