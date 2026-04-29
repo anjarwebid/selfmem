@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ project.id }} members — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Project members</h2>
+    <p class="text-sm text-gray-600 mt-1">
+        <span class="font-mono">{{ project.id }}</span> in
+        <a href="/ui/orgs/{{ org.slug }}" class="text-cyan-500/80 hover:text-cyan-400">{{ org.name }}</a>
+    </p>
+</div>
+
+{% set member_user_ids = project_members | map(attribute='user_id') | list %}
+
+{% if my_role == 'owner' %}
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5 mb-4">
+    <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-4">Add org member to this project</h3>
+    {% set addable = org_members | rejectattr('user_id', 'in', member_user_ids) | list %}
+    {% if addable %}
+    <form method="POST" action="/ui/projects/{{ project.id }}/members/add" class="flex gap-2 items-end">
+        <div class="flex-1">
+            <select name="user_id" class="w-full bg-surface-900 border border-white/[0.06] rounded px-3 py-2 text-sm font-mono">
+                {% for m in addable %}
+                <option value="{{ m.user_id }}">{{ m.email }} ({{ m.role }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm px-4 py-2 rounded">Add</button>
+    </form>
+    {% else %}
+    <p class="text-[12px] text-gray-700">All org members already have access to this project.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="space-y-2">
+    {% for m in project_members %}
+    {% set org_m = org_members | selectattr('user_id', 'equalto', m.user_id) | first %}
+    <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-4 flex items-center justify-between gap-4">
+        <div class="flex-1 min-w-0">
+            <span class="text-sm font-mono text-white">{{ org_m.email if org_m else m.user_id[:8] }}</span>
+            {% if org_m and org_m.role == 'owner' %}
+            <span class="badge-cyan text-[10px] px-2 py-0.5 rounded-md font-mono ml-3">org owner</span>
+            {% endif %}
+        </div>
+        {% if my_role == 'owner' and (not org_m or org_m.role != 'owner') %}
+        <form method="POST" action="/ui/projects/{{ project.id }}/members/{{ m.user_id }}/remove">
+            <button type="submit" onclick="return confirm('Remove access?')"
+                    class="text-[11px] text-red-400/80 hover:text-red-300 px-2 py-1 rounded border border-red-500/20 hover:bg-red-500/10">
+                Remove
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

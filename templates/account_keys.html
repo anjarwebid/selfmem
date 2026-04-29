@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}API Keys — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">API Keys</h2>
+    <p class="text-sm text-gray-600 mt-1">Keys grant access to specific projects via X-API-Key header.</p>
+</div>
+
+{% if new_key_value %}
+<div class="mb-6 card-glow bg-surface-800 border border-amber-500/30 rounded-xl p-5">
+    <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-medium text-amber-200 mb-1">Save this key now — it will not be shown again</h3>
+            <code class="block bg-surface-900 border border-white/[0.05] rounded px-3 py-2 mt-2 text-[12px] font-mono text-cyan-300 break-all select-all">{{ new_key_value }}</code>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6 mb-4">
+    <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-5">Create new key</h3>
+    <form method="POST" action="/ui/account/keys" class="space-y-4">
+        <div>
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Name</label>
+            <input type="text" name="name" required placeholder="e.g. claude-code-laptop"
+                   class="w-full bg-surface-900 border border-white/[0.06] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+        </div>
+        <div>
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Project access (ACL)</label>
+            {% if accessible_projects %}
+            <div class="space-y-2 bg-surface-900 border border-white/[0.06] rounded-lg p-3 max-h-48 overflow-auto">
+                {% for project in accessible_projects %}
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" name="project_ids" value="{{ project.id }}" checked
+                           class="rounded border-white/[0.1] bg-surface-700">
+                    <span class="font-mono text-gray-300 text-[13px]">{{ project.id }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-[12px] text-gray-600">No projects yet. Create one from the sidebar first.</p>
+            {% endif %}
+        </div>
+        <button type="submit" {% if not accessible_projects %}disabled{% endif %}
+                class="bg-cyan-600 hover:bg-cyan-500 disabled:bg-surface-700 disabled:text-gray-600 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+            Generate key
+        </button>
+    </form>
+</div>
+
+<div class="space-y-2">
+    {% for key in api_keys %}
+    <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5 flex items-center justify-between gap-4 {% if key.revoked_at %}opacity-50{% endif %}">
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 flex-wrap">
+                <span class="text-sm font-medium text-white">{{ key.name }}</span>
+                <code class="text-[12px] font-mono text-gray-600">{{ key.key_prefix }}…</code>
+                {% if key.revoked_at %}
+                <span class="badge-red text-[10px] px-2 py-0.5 rounded-md font-mono">revoked</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-2 mt-2 flex-wrap">
+                {% for pid in key.project_ids %}
+                <span class="badge-cyan text-[10px] px-2 py-0.5 rounded-md font-mono">{{ pid }}</span>
+                {% endfor %}
+                {% if not key.project_ids %}
+                <span class="text-[11px] text-gray-700 italic">no project access</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-3 mt-2 text-[11px] text-gray-700 font-mono">
+                <span>created <span data-utc="{{ key.created_at }}">{{ key.created_at[:16] }}</span></span>
+                {% if key.last_used_at %}
+                <span>last used <span data-utc="{{ key.last_used_at }}">{{ key.last_used_at[:16] }}</span></span>
+                {% endif %}
+            </div>
+        </div>
+        {% if not key.revoked_at %}
+        <form method="POST" action="/ui/account/keys/{{ key.id }}/revoke">
+            <button type="submit" onclick="return confirm('Revoke this key? Cannot be undone.')"
+                    class="text-[12px] text-red-400/80 hover:text-red-300 px-3 py-1.5 rounded border border-red-500/20 hover:bg-red-500/10 transition-all">
+                Revoke
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

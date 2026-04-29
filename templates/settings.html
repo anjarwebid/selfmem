@@ -16,7 +16,11 @@
             </div>
             <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500">Version</span>
-                <span class="text-gray-300 font-mono text-[13px]">1.0.0</span>
+                <span class="text-gray-300 font-mono text-[13px]">2.0.0</span>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-500">Mode</span>
+                <span class="text-gray-300 font-mono text-[13px]">{{ 'saas' if is_saas else 'self-hosted' }}</span>
             </div>
             <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500">Database</span>
@@ -46,10 +50,6 @@
         <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-5">API</h3>
         <div class="space-y-4">
             <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-500">API Key</span>
-                <span class="text-gray-300 font-mono text-[13px]">****{{ api_key_hint }}</span>
-            </div>
-            <div class="flex justify-between items-center text-sm">
                 <span class="text-gray-500">MCP Endpoint</span>
                 <span class="text-cyan-400/70 font-mono text-[13px]">/mcp</span>
             </div>
@@ -57,18 +57,10 @@
                 <span class="text-gray-500">REST API</span>
                 <span class="text-cyan-400/70 font-mono text-[13px]">/api/v1/</span>
             </div>
-        </div>
-    </div>
-
-    <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6">
-        <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-5">Projects</h3>
-        <div class="space-y-3">
-            {% for project in projects %}
-            <div class="flex justify-between items-center text-sm py-1">
-                <span class="text-gray-300 font-mono text-[13px]">{{ project.project_id }}</span>
-                <span class="text-gray-600 font-mono text-[12px]">{{ project.count }} memories</span>
+            <div class="flex justify-between items-center text-sm">
+                <span class="text-gray-500">API keys</span>
+                <a href="/ui/account/keys" class="text-cyan-400/70 hover:text-cyan-300 text-[13px]">Manage</a>
             </div>
-            {% endfor %}
         </div>
     </div>
 

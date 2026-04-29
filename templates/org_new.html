@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}New org — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Create org</h2>
+    <p class="text-sm text-gray-600 mt-1">Workspace for a team or set of related projects</p>
+</div>
+
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6 max-w-xl">
+    {% if error %}
+    <div class="mb-4 px-4 py-3 rounded-lg bg-red-950/50 border border-red-800/30 text-red-300 text-sm">{{ error }}</div>
+    {% endif %}
+    <form method="POST" action="/ui/orgs/new" class="space-y-4">
+        <div>
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Display name</label>
+            <input type="text" name="name" required placeholder="Acme Inc."
+                   class="w-full bg-surface-900 border border-white/[0.06] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+        </div>
+        <div>
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Slug</label>
+            <input type="text" name="slug" required pattern="[a-z0-9][a-z0-9-]{1,98}[a-z0-9]"
+                   placeholder="acme" class="w-full bg-surface-900 border border-white/[0.06] rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+            <p class="text-[11px] text-gray-700 mt-1.5">URL-safe: lowercase letters, numbers, hyphens. 3-100 chars.</p>
+        </div>
+        <button type="submit"
+                class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+            Create org
+        </button>
+    </form>
+</div>
+{% endblock %}

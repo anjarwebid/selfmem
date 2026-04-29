@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot password — SelfMem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-[#08080c] text-gray-100 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-sm">
+        <div class="bg-[#0e0e14] border border-white/[0.06] rounded-2xl p-8">
+            <h1 class="text-xl font-semibold text-white tracking-tight mb-6">Reset password</h1>
+
+            {% if message %}<div class="mb-5 px-4 py-3 rounded-lg bg-emerald-950/50 border border-emerald-800/30 text-emerald-300 text-sm">{{ message }}</div>{% endif %}
+            {% if error %}<div class="mb-5 px-4 py-3 rounded-lg bg-red-950/50 border border-red-800/30 text-red-300 text-sm">{{ error }}</div>{% endif %}
+
+            <form method="POST" action="/ui/forgot" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Email</label>
+                    <input type="email" name="email" required autofocus
+                           class="w-full bg-[#16161f] border border-white/[0.06] rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+                </div>
+                <button type="submit"
+                        class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-medium py-3 rounded-lg text-sm">
+                    Send reset link
+                </button>
+            </form>
+
+            <p class="text-center text-[12px] text-gray-600 mt-6">
+                <a href="/ui/login" class="text-cyan-500/80 hover:text-cyan-400">Back to sign in</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

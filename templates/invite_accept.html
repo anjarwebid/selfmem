@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join {{ invite.org_name if invite else '' }} — SelfMem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-[#08080c] text-gray-100 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-sm">
+        <div class="bg-[#0e0e14] border border-white/[0.06] rounded-2xl p-8">
+            {% if error %}
+            <div class="mb-4 px-4 py-3 rounded-lg bg-red-950/50 border border-red-800/30 text-red-300 text-sm">{{ error }}</div>
+            {% endif %}
+
+            {% if invite %}
+            <div class="mb-6">
+                <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Invitation to join</p>
+                <h1 class="text-xl font-semibold text-white">{{ invite.org_name }}</h1>
+                <p class="text-[12px] text-gray-600 font-mono mt-1">as {{ invite.role }}</p>
+            </div>
+
+            {% if logged_in_user_id %}
+            <form method="POST" action="/ui/invite/{{ token }}">
+                <button type="submit"
+                        class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-medium py-3 rounded-lg text-sm">
+                    Accept and join
+                </button>
+            </form>
+            {% else %}
+            <form method="POST" action="/ui/invite/{{ token }}" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Email</label>
+                    <input type="email" name="email" required
+                           value="{{ invite.email or '' }}"
+                           class="w-full bg-[#16161f] border border-white/[0.06] rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">Choose a password</label>
+                    <input type="password" name="password" required minlength="8"
+                           class="w-full bg-[#16161f] border border-white/[0.06] rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500/30">
+                    <p class="text-[10px] text-gray-700 mt-1.5">Minimum 8 characters</p>
+                </div>
+                <button type="submit"
+                        class="w-full bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-medium py-3 rounded-lg text-sm">
+                    Create account and join
+                </button>
+            </form>
+            <p class="text-center text-[12px] text-gray-600 mt-6">
+                Already have an account? <a href="/ui/login" class="text-cyan-500/80 hover:text-cyan-400">Sign in first</a>, then re-open this link.
+            </p>
+            {% endif %}
+            {% else %}
+            <p class="text-center text-[12px] text-gray-600">
+                <a href="/ui/login" class="text-cyan-500/80 hover:text-cyan-400">Go to sign in</a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SelfMem — Personal &amp; team memory for LLM agents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-[#08080c] text-gray-100 min-h-screen">
+    <!-- Background glow -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-[-200px] left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-cyan-500/[0.04] rounded-full blur-[160px]"></div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="relative z-10 border-b border-white/[0.04]">
+        <div class="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+                <span class="text-[15px] font-semibold text-white tracking-tight">SelfMem</span>
+            </a>
+            <div class="flex items-center gap-6 text-[13px]">
+                <a href="/pricing" class="text-gray-500 hover:text-gray-300 transition-colors">Pricing</a>
+                <a href="https://github.com/anjarwebid/selfmem" class="text-gray-500 hover:text-gray-300 transition-colors">GitHub</a>
+                <a href="/ui/login" class="text-gray-300 hover:text-white transition-colors">Sign in</a>
+                <a href="/ui/signup"
+                   class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    Start free
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="relative z-10 max-w-4xl mx-auto px-8 py-24 text-center">
+        <p class="text-[11px] text-cyan-400/70 uppercase tracking-[0.2em] font-mono mb-6">Personal &amp; team memory for LLM agents</p>
+        <h1 class="text-5xl sm:text-6xl font-semibold text-white tracking-tight leading-[1.05]">
+            One memory layer<br>across every assistant.
+        </h1>
+        <p class="text-lg text-gray-400 mt-7 max-w-2xl mx-auto leading-relaxed">
+            SelfMem stores what your AI agents learn and serves it back through MCP, REST, or a web UI.
+            Hybrid full-text + semantic search, per-project access control, and your own data.
+        </p>
+        <div class="flex items-center justify-center gap-3 mt-10">
+            <a href="/ui/signup"
+               class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-6 py-3 rounded-lg text-sm font-medium">
+                Create free account
+            </a>
+            <a href="https://github.com/anjarwebid/selfmem"
+               class="bg-surface-800 border border-white/[0.06] hover:bg-surface-700 text-gray-300 px-6 py-3 rounded-lg text-sm font-medium">
+                Self-host →
+            </a>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="relative z-10 max-w-5xl mx-auto px-8 pb-24">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-surface-800 border border-white/[0.04] rounded-2xl p-6">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-4">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+                <h3 class="text-white font-medium text-base mb-2">Hybrid search</h3>
+                <p class="text-[13px] text-gray-500 leading-relaxed">PostgreSQL full-text + pgvector cosine similarity, weighted and ranked together. Find what you meant, not what you wrote.</p>
+            </div>
+            <div class="bg-surface-800 border border-white/[0.04] rounded-2xl p-6">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-4">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+                </div>
+                <h3 class="text-white font-medium text-base mb-2">Per-project ACLs</h3>
+                <p class="text-[13px] text-gray-500 leading-relaxed">Each API key grants access to only the projects you choose. Share specific projects with teammates without giving away the whole org.</p>
+            </div>
+            <div class="bg-surface-800 border border-white/[0.04] rounded-2xl p-6">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center mb-4">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="text-white font-medium text-base mb-2">MCP-native</h3>
+                <p class="text-[13px] text-gray-500 leading-relaxed">Drop into Claude Code, Claude Desktop, Cursor, or any MCP client. Six tools (save / search / list / get / update / delete) and you're done.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA strip -->
+    <section class="relative z-10 max-w-4xl mx-auto px-8 pb-32">
+        <div class="bg-gradient-to-br from-surface-800 to-surface-900 border border-white/[0.06] rounded-2xl p-10 text-center">
+            <h2 class="text-2xl font-semibold text-white mb-3">Start with a free project</h2>
+            <p class="text-gray-500 text-sm mb-6">No credit card. Upgrade when you need more.</p>
+            <a href="/ui/signup"
+               class="inline-block bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white px-6 py-3 rounded-lg text-sm font-medium">
+                Get started
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-white/[0.04] py-8">
+        <div class="max-w-6xl mx-auto px-8 flex items-center justify-between text-[12px] text-gray-700">
+            <span>SelfMem v2.0 · self-hostable, open-source</span>
+            <div class="flex items-center gap-5">
+                <a href="/pricing" class="hover:text-gray-500 transition-colors">Pricing</a>
+                <a href="/terms" class="hover:text-gray-500 transition-colors">Terms</a>
+                <a href="/privacy" class="hover:text-gray-500 transition-colors">Privacy</a>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

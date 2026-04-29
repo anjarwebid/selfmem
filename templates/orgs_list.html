@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Orgs — SelfMem{% endblock %}
+{% block content %}
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h2 class="text-2xl font-semibold text-white">Orgs</h2>
+        <p class="text-sm text-gray-600 mt-1">Workspaces you belong to</p>
+    </div>
+    <a href="/ui/orgs/new"
+       class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New org
+    </a>
+</div>
+
+<div class="space-y-2 stagger">
+    {% for org in orgs %}
+    <a href="/ui/orgs/{{ org.slug }}"
+       class="card-glow block bg-surface-800 border border-white/[0.04] rounded-xl p-5 hover:border-accent/20 transition-all">
+        <div class="flex items-center justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-3 mb-1.5 flex-wrap">
+                    <h3 class="text-sm font-medium text-white">{{ org.name }}</h3>
+                    {% if org.is_personal %}
+                    <span class="badge-ghost text-[10px] px-2 py-0.5 rounded-md font-mono">personal</span>
+                    {% endif %}
+                    <span class="badge-cyan text-[10px] px-2 py-0.5 rounded-md font-mono">{{ org.role }}</span>
+                    <span class="badge-ghost text-[10px] px-2 py-0.5 rounded-md font-mono">{{ org.plan_tier }}</span>
+                </div>
+                <p class="text-[12px] text-gray-600 font-mono">{{ org.slug }}</p>
+            </div>
+            <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

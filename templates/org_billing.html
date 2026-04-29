@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ org.name }} billing — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Billing</h2>
+    <p class="text-sm text-gray-600 mt-1">{{ org.name }} <span class="font-mono">({{ org.slug }})</span></p>
+    <a href="/ui/orgs/{{ org.slug }}" class="text-[12px] text-cyan-500 hover:text-cyan-400 mt-2 inline-block">← Back to org</a>
+</div>
+
+{% if request.query_params.get('upgraded') %}
+<div class="mb-6 px-4 py-3 rounded-lg bg-emerald-950/40 border border-emerald-800/30 text-emerald-300 text-sm">
+    Subscription activated. Welcome to Unlimited.
+</div>
+{% endif %}
+
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6 mb-4 max-w-2xl">
+    <div class="flex items-start justify-between mb-5">
+        <div>
+            <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-1">Current plan</h3>
+            <p class="text-2xl font-semibold text-white capitalize">{{ org.plan_tier }}</p>
+            {% if org.subscription_active_until %}
+            <p class="text-[12px] text-gray-600 mt-1">
+                {% if org.plan_tier == 'unlimited' %}Renews{% else %}Cancelled — active until{% endif %}
+                <span data-utc="{{ org.subscription_active_until }}">{{ org.subscription_active_until[:16] }}</span>
+            </p>
+            {% endif %}
+        </div>
+        {% if org.plan_tier == 'unlimited' %}
+        <span class="badge-cyan text-[11px] px-3 py-1 rounded-md font-mono">active</span>
+        {% endif %}
+    </div>
+
+    <div class="space-y-3 text-sm border-t border-white/[0.04] pt-5">
+        <div class="flex justify-between">
+            <span class="text-gray-500">Memories</span>
+            <span class="text-gray-300 font-mono">{{ usage.memory_count if usage else 0 }}{% if org.plan_tier == 'free' %} / {{ limits.memory }}{% endif %}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Projects</span>
+            <span class="text-gray-300 font-mono">{{ usage.project_count if usage else 0 }}{% if org.plan_tier == 'free' %} / {{ limits.project }}{% endif %}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-gray-500">Members</span>
+            <span class="text-gray-300 font-mono">{{ usage.member_count if usage else 0 }}{% if org.plan_tier == 'free' %} / {{ limits.member }}{% endif %}</span>
+        </div>
+    </div>
+</div>
+
+{% if my_role == 'owner' %}
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6 max-w-2xl">
+    {% if not is_saas %}
+    <p class="text-sm text-gray-400">Self-hosted mode — no billing required. All limits are off.</p>
+    {% elif not billing_configured %}
+    <p class="text-sm text-amber-400">Billing is not configured on this server. Contact your admin.</p>
+    {% elif org.plan_tier == 'free' %}
+    <h3 class="text-sm font-medium text-white mb-1">Upgrade to Unlimited</h3>
+    <p class="text-[12px] text-gray-600 mb-4">Remove all limits across this org. Cancel any time.</p>
+    <form method="POST" action="/ui/orgs/{{ org.slug }}/billing/checkout">
+        <button type="submit"
+                class="bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-500 hover:to-cyan-600 text-white font-medium px-5 py-2.5 rounded-lg text-sm">
+            Upgrade
+        </button>
+    </form>
+    {% else %}
+    <h3 class="text-sm font-medium text-white mb-1">Manage subscription</h3>
+    <p class="text-[12px] text-gray-600 mb-4">View invoices, update payment method, or cancel via Stripe.</p>
+    <form method="POST" action="/ui/orgs/{{ org.slug }}/billing/portal">
+        <button type="submit"
+                class="bg-surface-700 hover:bg-surface-600 text-white text-sm font-medium px-5 py-2.5 rounded-lg border border-white/[0.06]">
+            Open billing portal →
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ org.name }} audit — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Audit log</h2>
+    <p class="text-sm text-gray-600 mt-1">{{ org.name }} <span class="font-mono">({{ org.slug }})</span></p>
+    <a href="/ui/orgs/{{ org.slug }}" class="text-[12px] text-cyan-500 hover:text-cyan-400 mt-2 inline-block">← Back to org</a>
+</div>
+
+<div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl overflow-hidden">
+    <table class="w-full text-sm">
+        <thead class="bg-surface-900 text-[10px] text-gray-600 uppercase tracking-widest font-mono">
+            <tr>
+                <th class="text-left px-4 py-3">Time</th>
+                <th class="text-left px-4 py-3">Actor</th>
+                <th class="text-left px-4 py-3">Action</th>
+                <th class="text-left px-4 py-3">Resource</th>
+                <th class="text-left px-4 py-3">IP</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ev in events %}
+            <tr class="border-t border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                <td class="px-4 py-2.5 text-[12px] text-gray-700 font-mono whitespace-nowrap" data-utc="{{ ev.created_at }}">{{ ev.created_at[:16] }}</td>
+                <td class="px-4 py-2.5 text-[12px] text-gray-400 font-mono">
+                    {% if ev.actor_email %}{{ ev.actor_email }}{% elif ev.actor_key_name %}key:{{ ev.actor_key_name }}{% else %}<span class="text-gray-700">system</span>{% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-[12px] text-cyan-400/80 font-mono">{{ ev.action }}</td>
+                <td class="px-4 py-2.5 text-[12px] text-gray-500 font-mono">
+                    {% if ev.resource_type %}{{ ev.resource_type }}{% if ev.resource_id %}:{{ ev.resource_id[:12] }}{% endif %}{% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-[12px] text-gray-700 font-mono">{{ ev.ip_address or '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-700">No events yet</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

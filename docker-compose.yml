@@ -21,9 +21,18 @@ services:
     env_file: .env
     environment:
       - DATABASE_URL=postgresql://selfmem:${POSTGRES_PASSWORD:-changeme}@db:5432/selfmem
-      - SELFMEM_API_KEYS=${SELFMEM_API_KEYS}
       - SELFMEM_SESSION_SECRET=${SELFMEM_SESSION_SECRET:-change-me-in-production}
-      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - SELFMEM_HOSTING_MODE=${SELFMEM_HOSTING_MODE:-selfhosted}
+      - SELFMEM_PUBLIC_URL=${SELFMEM_PUBLIC_URL:-http://localhost:8818}
+      - SELFMEM_RESET_DATABASE=${SELFMEM_RESET_DATABASE:-false}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-all-MiniLM-L6-v2}
+      # SaaS quotas (only enforced when SELFMEM_HOSTING_MODE=saas)
+      - SELFMEM_FREE_MEMORY_LIMIT=${SELFMEM_FREE_MEMORY_LIMIT:-100}
+      - SELFMEM_FREE_PROJECT_LIMIT=${SELFMEM_FREE_PROJECT_LIMIT:-1}
+      - SELFMEM_FREE_MEMBER_LIMIT=${SELFMEM_FREE_MEMBER_LIMIT:-1}
+      - SELFMEM_FREE_API_LIMIT_DAILY=${SELFMEM_FREE_API_LIMIT_DAILY:-100}
+    ports:
+      - "8818:8818"
     depends_on:
       - db
 

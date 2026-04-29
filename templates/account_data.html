@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Account data — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-semibold text-white">Your data</h2>
+    <p class="text-sm text-gray-600 mt-1">Export everything tied to your account, or delete it permanently.</p>
+</div>
+
+<div class="space-y-4 max-w-2xl stagger">
+    <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-6">
+        <h3 class="text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-3">Export</h3>
+        <p class="text-sm text-gray-400 mb-4">Download a JSON file containing your profile, orgs, projects, memories, API keys (without secrets), and audit log.</p>
+        <a href="/ui/account/data/export"
+           class="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-700 border border-white/[0.06] rounded-lg text-sm text-gray-300 hover:bg-surface-600 hover:text-white transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download JSON export
+        </a>
+    </div>
+
+    <div class="card-glow bg-surface-800 border border-red-900/30 rounded-xl p-6">
+        <h3 class="text-[10px] text-red-500/80 uppercase tracking-widest font-mono mb-3">Delete account</h3>
+        <p class="text-sm text-gray-400 mb-2">This will:</p>
+        <ul class="text-[13px] text-gray-500 list-disc list-inside space-y-1 mb-4">
+            <li>Soft-delete your user (email released after 30 days)</li>
+            <li>Revoke all your API keys</li>
+            {% if only_owner_orgs %}
+            <li>
+                <span class="text-red-300">Permanently delete</span> these orgs (you are the only owner) and all their projects + memories:
+                <ul class="ml-4 mt-1 font-mono text-[12px] text-gray-500">
+                    {% for o in only_owner_orgs %}
+                    <li>• {{ o.slug }}{% if o.is_personal %} (personal){% endif %} — {{ o.name }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% else %}
+            <li>Remove you from all orgs (no orgs will be deleted)</li>
+            {% endif %}
+        </ul>
+
+        {% if delete_error %}
+        <div class="mb-3 px-3 py-2 rounded bg-red-950/40 border border-red-800/30 text-red-300 text-[12px]">{{ delete_error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/ui/account/data/delete" class="space-y-3">
+            <div>
+                <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-2">
+                    Type your email to confirm: <span class="text-gray-400">{{ auth_user.email }}</span>
+                </label>
+                <input type="email" name="confirm_email" required autocomplete="off"
+                       class="w-full bg-surface-900 border border-white/[0.06] rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-red-500/30">
+            </div>
+            <button type="submit" onclick="return confirm('This is irreversible. Continue?')"
+                    class="bg-red-700 hover:bg-red-600 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
+                Permanently delete account
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

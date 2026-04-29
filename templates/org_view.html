@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}{{ org.name }} — SelfMem{% endblock %}
+{% block content %}
+<div class="mb-8">
+    <div class="flex items-center gap-3 flex-wrap mb-1">
+        <h2 class="text-2xl font-semibold text-white">{{ org.name }}</h2>
+        {% if org.is_personal %}
+        <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">personal</span>
+        {% endif %}
+        <span class="badge-cyan text-[11px] px-2 py-0.5 rounded-md font-mono">{{ my_role }}</span>
+        <span class="badge-ghost text-[11px] px-2 py-0.5 rounded-md font-mono">{{ org.plan_tier }}</span>
+    </div>
+    <p class="text-sm text-gray-600 font-mono">{{ org.slug }}</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 stagger">
+    <div class="stat-card card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5">
+        <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Memories</p>
+        <p class="text-3xl font-light text-white mt-2">{{ usage.memory_count if usage else 0 }}{% if is_saas and org.plan_tier == 'free' %}<span class="text-sm text-gray-700"> / {{ limits.memory }}</span>{% endif %}</p>
+    </div>
+    <div class="stat-card card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5">
+        <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Projects</p>
+        <p class="text-3xl font-light text-white mt-2">{{ usage.project_count if usage else 0 }}{% if is_saas and org.plan_tier == 'free' %}<span class="text-sm text-gray-700"> / {{ limits.project }}</span>{% endif %}</p>
+    </div>
+    <div class="stat-card card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5">
+        <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Members</p>
+        <p class="text-3xl font-light text-white mt-2">{{ usage.member_count if usage else 0 }}{% if is_saas and org.plan_tier == 'free' %}<span class="text-sm text-gray-700"> / {{ limits.member }}</span>{% endif %}</p>
+    </div>
+</div>
+
+<!-- Projects -->
+<div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider">Projects</h3>
+        {% if my_role == 'owner' %}
+        <button onclick="document.getElementById('new-project-form').classList.toggle('hidden')"
+                class="text-[12px] text-cyan-500 hover:text-cyan-400 transition-colors">+ New project</button>
+        {% endif %}
+    </div>
+    {% if my_role == 'owner' %}
+    <form id="new-project-form" method="POST" action="/ui/orgs/{{ org.slug }}/projects/new"
+          class="hidden mb-4 card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-4 flex gap-2 items-end">
+        <div class="flex-1">
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-1.5">Project ID</label>
+            <input type="text" name="project_id" required pattern="[a-z0-9][a-z0-9-]{1,98}[a-z0-9]"
+                   placeholder="my-project" class="w-full bg-surface-900 border border-white/[0.06] rounded px-3 py-2 text-sm font-mono">
+        </div>
+        <div class="flex-1">
+            <label class="block text-[10px] text-gray-600 uppercase tracking-widest font-mono mb-1.5">Name (optional)</label>
+            <input type="text" name="name" class="w-full bg-surface-900 border border-white/[0.06] rounded px-3 py-2 text-sm">
+        </div>
+        <button type="submit" class="bg-cyan-600 hover:bg-cyan-500 text-white text-sm px-4 py-2 rounded">Create</button>
+    </form>
+    {% endif %}
+    <div class="space-y-2">
+        {% for proj in projects %}
+        <div class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-4 flex items-center justify-between gap-4">
+            <div class="flex-1 min-w-0">
+                <span class="text-sm font-mono text-white">{{ proj.id }}</span>
+                {% if proj.name and proj.name != proj.id %}
+                <span class="text-[12px] text-gray-600 ml-3">{{ proj.name }}</span>
+                {% endif %}
+            </div>
+            <a href="/ui/projects/{{ proj.id }}/members"
+               class="text-[12px] text-gray-600 hover:text-cyan-400 transition-colors">Members</a>
+        </div>
+        {% else %}
+        <p class="text-[12px] text-gray-700">No projects yet</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Members + audit + billing links -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <a href="/ui/orgs/{{ org.slug }}/members"
+       class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5 flex items-center justify-between hover:border-accent/20 transition-all">
+        <div>
+            <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Members</p>
+            <p class="text-lg text-white mt-1">{{ members|length }}</p>
+        </div>
+        <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
+    </a>
+    <a href="/ui/orgs/{{ org.slug }}/audit"
+       class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5 flex items-center justify-between hover:border-accent/20 transition-all">
+        <div>
+            <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Audit log</p>
+            <p class="text-lg text-white mt-1">View →</p>
+        </div>
+        <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
+    </a>
+    <a href="/ui/orgs/{{ org.slug }}/billing"
+       class="card-glow bg-surface-800 border border-white/[0.04] rounded-xl p-5 flex items-center justify-between hover:border-accent/20 transition-all">
+        <div>
+            <p class="text-[10px] text-gray-600 uppercase tracking-widest font-mono">Billing</p>
+            <p class="text-lg text-white mt-1 capitalize">{{ org.plan_tier }}</p>
+        </div>
+        <svg class="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"/></svg>
+    </a>
+</div>
+{% endblock %}
